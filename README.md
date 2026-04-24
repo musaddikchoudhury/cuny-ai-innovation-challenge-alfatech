@@ -1,5 +1,5 @@
 # AlfaTech — Powered by Urban-Sync (The Civic Ledger)
-    [View our Project Website & Demo Here]([Insert your Google Sites Link here])
+    View our Project Website & Demo Here: https://sites.google.com/view/alfatech-ai-copilot/home
     
     ## Project Description
     AlfaTech is a Hybrid Deterministic System designed to solve the 'Administrative Burden' facing CUNY students and NYC residents. By converting complex policy documents into executable eligibility logic, we bridge the gap between needing help and receiving it.
