@@ -2,24 +2,30 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { Sparkles, LogOut, User } from "lucide-react"
+import { useState } from "react"
+import { ArrowRight, LogOut, Sparkles, User } from "lucide-react"
 
 const NAV_LINKS = [
-  { label: "Home",      href: "/" },
+  { label: "Home", href: "/" },
   { label: "Dashboard", href: "/dashboard" },
   { label: "Deadlines", href: "/deadlines" },
 ]
 
+function readStoredUser(): { name: string; email: string } | null {
+  if (typeof window === "undefined") return null
+  const raw = window.localStorage.getItem("bridge_user")
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 export function Navbar() {
   const pathname = usePathname()
-  const router   = useRouter()
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null)
-
-  useEffect(() => {
-    const raw = localStorage.getItem("bridge_user")
-    if (raw) setUser(JSON.parse(raw))
-  }, [pathname]) // re-check on every navigation
+  const router = useRouter()
+  const [user, setUser] = useState<{ name: string; email: string } | null>(readStoredUser)
 
   const logout = () => {
     localStorage.removeItem("bridge_user")
@@ -28,44 +34,27 @@ export function Navbar() {
   }
 
   return (
-    <nav
-      className="fixed top-0 left-0 right-0 z-50"
-      style={{
-        background: "rgba(255,255,255,0.92)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        borderBottom: "1px solid var(--border)",
-      }}
-    >
-      <div
-        className="max-w-6xl mx-auto px-6 flex items-center justify-between"
-        style={{ height: "64px" }}
-      >
-        {/* Logo */}
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(29,78,216,0.3)", flexShrink: 0 }}>
-            <Sparkles size={16} color="white" strokeWidth={2.5} />
-          </div>
-          <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: "-0.3px", color: "var(--text-1)" }}>
-            Bridge<span style={{ color: "var(--accent)" }}>AI</span>
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        <Link href="/" className="flex items-center gap-2.5 text-slate-950">
+          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-950 shadow-sm">
+            <Sparkles className="h-4 w-4 text-white" strokeWidth={2.5} />
+          </span>
+          <span className="text-base font-semibold tracking-normal">
+            Bridge<span className="text-blue-700">AI</span>
           </span>
         </Link>
 
-        {/* Centre links */}
-        <div className="hidden md:flex items-center" style={{ gap: 2 }}>
+        <div className="hidden items-center gap-1 md:flex">
           {NAV_LINKS.map(({ label, href }) => {
             const active = pathname === href
             return (
               <Link
                 key={href}
                 href={href}
-                style={{
-                  padding: "7px 14px", borderRadius: 10,
-                  fontSize: 14, fontWeight: 500,
-                  color: active ? "var(--accent)" : "var(--text-3)",
-                  background: active ? "var(--surface-3)" : "transparent",
-                  textDecoration: "none", transition: "color 0.15s, background 0.15s",
-                }}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                  active ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                }`}
               >
                 {label}
               </Link>
@@ -73,39 +62,36 @@ export function Navbar() {
           })}
         </div>
 
-        {/* Right side — auth */}
         {user ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10 }}>
-              <div style={{ width: 24, height: 24, background: "var(--accent-3)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <User size={12} color="var(--accent)" />
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
-                {user.name}
+          <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 sm:flex">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                <User className="h-3.5 w-3.5" />
               </span>
+              {user.name}
             </div>
             <button
               onClick={logout}
-              style={{ padding: "7px 12px", background: "transparent", border: "1px solid var(--border)", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-3)" }}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-              <LogOut size={13} />
+              <LogOut className="h-4 w-4" />
               Log out
             </button>
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex items-center gap-2">
             <Link
               href="/login"
-              style={{ padding: "9px 16px", fontSize: 14, fontWeight: 500, color: "var(--text-2)", background: "transparent", border: "1px solid var(--border)", borderRadius: 12, textDecoration: "none" }}
+              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               Log in
             </Link>
             <Link
               href="/onboard"
-              className="btn-primary"
-              style={{ padding: "9px 20px", fontSize: 14, borderRadius: 12, textDecoration: "none" }}
+              className="inline-flex items-center gap-2 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              Get Started →
+              Get Started
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         )}

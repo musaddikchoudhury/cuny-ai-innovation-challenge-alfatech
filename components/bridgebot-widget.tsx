@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { Fragment, useState, useRef, useCallback, useEffect, type ReactNode } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { MessageCircle, X, Send, Sparkles } from "lucide-react"
 
@@ -10,60 +10,52 @@ interface Msg { role: "user" | "assistant"; content: string }
 
 // Parse markdown bold (**text**) and links ([text](url)) into JSX
 function FormattedMessage({ text }: { text: string }) {
-  // Split by markdown links and bold
-  const parts: React.ReactNode[] = []
-  const regex = /\*\*(.*?)\*\*|\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/\S+)/g
-  let last = 0
-  let match
+  const renderInline = (line: string): ReactNode[] => {
+    const parts: ReactNode[] = []
+    const regex = /\*\*(.*?)\*\*|\[([^\]]+)\]\(([^)]+)\)|(https?:\/\/\S+)/g
+    let last = 0
+    let match: RegExpExecArray | null
 
-  while ((match = regex.exec(text)) !== null) {
-    // Plain text before this match
-    if (match.index > last) {
-      parts.push(<span key={last}>{text.slice(last, match.index)}</span>)
+    while ((match = regex.exec(line)) !== null) {
+      if (match.index > last) {
+        parts.push(<span key={last}>{line.slice(last, match.index)}</span>)
+      }
+
+      if (match[1]) {
+        parts.push(<strong key={match.index} style={{ fontWeight: 600, color: "#0F172A" }}>{match[1]}</strong>)
+      } else if (match[2] && match[3]) {
+        parts.push(
+          <a key={match.index} href={match[3]} target="_blank" rel="noopener noreferrer"
+            style={{ color: "#1D4ED8", textDecoration: "underline", fontWeight: 500 }}>
+            {match[2]}
+          </a>
+        )
+      } else if (match[4]) {
+        parts.push(
+          <a key={match.index} href={match[4]} target="_blank" rel="noopener noreferrer"
+            style={{ color: "#1D4ED8", textDecoration: "underline", fontWeight: 500 }}>
+            {match[4]}
+          </a>
+        )
+      }
+
+      last = match.index + match[0].length
     }
 
-    if (match[1]) {
-      // **bold**
-      parts.push(<strong key={match.index} style={{ fontWeight: 600, color: "#0F172A" }}>{match[1]}</strong>)
-    } else if (match[2] && match[3]) {
-      // [link text](url)
-      parts.push(
-        <a key={match.index} href={match[3]} target="_blank" rel="noopener noreferrer"
-          style={{ color: "#1D4ED8", textDecoration: "underline", fontWeight: 500 }}>
-          {match[2]}
-        </a>
-      )
-    } else if (match[4]) {
-      // bare URL
-      parts.push(
-        <a key={match.index} href={match[4]} target="_blank" rel="noopener noreferrer"
-          style={{ color: "#1D4ED8", textDecoration: "underline", fontWeight: 500 }}>
-          {match[4]}
-        </a>
-      )
-    }
-    last = match.index + match[0].length
+    if (last < line.length) parts.push(<span key={last}>{line.slice(last)}</span>)
+    return parts
   }
 
-  if (last < text.length) parts.push(<span key={last}>{text.slice(last)}</span>)
-
-  // Split by newlines and render paragraphs
-  const withNewlines: React.ReactNode[] = []
-  parts.forEach((part, i) => {
-    if (typeof part === "string" || (part as React.ReactElement).type === "span") {
-      const str = typeof part === "string" ? part : (part as React.ReactElement).props.children as string
-      if (typeof str === "string" && str.includes("\n")) {
-        str.split("\n").forEach((line, j) => {
-          if (j > 0) withNewlines.push(<br key={`br-${i}-${j}`} />)
-          if (line) withNewlines.push(<span key={`${i}-${j}`}>{line}</span>)
-        })
-        return
-      }
-    }
-    withNewlines.push(part)
-  })
-
-  return <span style={{ lineHeight: 1.6 }}>{withNewlines}</span>
+  return (
+    <span style={{ lineHeight: 1.6 }}>
+      {text.split("\n").map((line, index) => (
+        <Fragment key={`${line}-${index}`}>
+          {index > 0 && <br />}
+          {renderInline(line)}
+        </Fragment>
+      ))}
+    </span>
+  )
 }
 
 const LANDING_SYSTEM = `You are BridgeBot, a friendly AI resource advisor for CUNY students on the BridgeAI platform.

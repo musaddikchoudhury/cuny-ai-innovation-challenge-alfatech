@@ -1,7 +1,8 @@
 fastapi
-uvicorn
+uvicorn[standard]
 anthropic
 pdfplumber
 python-dotenv
 requests
 pydantic
+python-multipart

@@ -13,22 +13,49 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from functools import lru_cache
+from pathlib import Path
 
 load_dotenv()
 
+BASE_DIR = Path(__file__).resolve().parent
+
 app = FastAPI(title="BridgeAI Engine", version="3.4.0")
+
+
+def cors_origins() -> List[str]:
+    raw = os.getenv("FRONTEND_URL", "*")
+    if raw.strip() == "*":
+        return ["*"]
+    return [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+
+
+def primary_frontend_url() -> str:
+    raw = os.getenv("FRONTEND_URL", "").split(",")[0].strip().rstrip("/")
+    if raw and raw != "*":
+        return raw
+    return "https://cuny-ai-innovation-challenge-alfatech.vercel.app"
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "*")],
+    allow_origins=cors_origins(),
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 MODEL   = "claude-haiku-4-5-20251001"
+PUBLIC_APP_URL = primary_frontend_url()
 
-LANDING_BOT_SYSTEM = """You are BridgeBot, a friendly AI resource advisor for CUNY students on the BridgeAI platform.
+
+def anthropic_client() -> anthropic.Anthropic:
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY is not configured.")
+    return anthropic.Anthropic(api_key=api_key)
+
+
+LANDING_BOT_SYSTEM = f"""You are BridgeBot, a friendly AI resource advisor for CUNY students on the BridgeAI platform.
 BridgeAI helps CUNY students discover scholarships, financial aid, internships, and NYC benefits in 15 seconds.
 
 Programs and links you know:
@@ -50,7 +77,7 @@ RULES:
 - Give specific, direct answers. Never be vague.
 - Always include at least one clickable link formatted as [Link Text](https://url.com)
 - Format program names in **bold**
-- If a student asks how to find what they qualify for, say: "Click [Get Started](http://localhost:3000/onboard) to upload your transcript or fill a quick form -- we match you to everything you qualify for in 15 seconds."
+- If a student asks how to find what they qualify for, say: "Click [Get Started]({PUBLIC_APP_URL}/onboard) to upload your transcript or fill a quick form -- we match you to everything you qualify for in 15 seconds."
 - If a student asks about skills or career prep and mentions their campus, recommend BMCC Career Services and Handshake with links
 - Keep responses to 4 sentences max
 - End with one clear next step the student can take right now
@@ -58,7 +85,7 @@ RULES:
 
 
 def ai(prompt: str, max_tokens: int = 1024) -> str:
-    message = _client.messages.create(
+    message = anthropic_client().messages.create(
         model=MODEL, max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -66,7 +93,7 @@ def ai(prompt: str, max_tokens: int = 1024) -> str:
 
 
 def ai_with_system(system: str, messages: list, max_tokens: int = 512) -> str:
-    message = _client.messages.create(
+    message = anthropic_client().messages.create(
         model=MODEL, max_tokens=max_tokens,
         system=system, messages=messages
     )
@@ -75,7 +102,7 @@ def ai_with_system(system: str, messages: list, max_tokens: int = 512) -> str:
 
 @lru_cache(maxsize=1)
 def get_resources() -> List[dict]:
-    with open("resources.json", "r", encoding="utf-8") as f:
+    with open(BASE_DIR / "resources.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -378,4 +405,5 @@ async def schedule_gmail_reminder(req: GmailReminderRequest, background_tasks: B
 @app.get("/health")
 def health_check():
     return {"status": "online", "version": "3.4.0",
-            "resources_loaded": len(get_resources()), "ai_model": MODEL}
+            "resources_loaded": len(get_resources()), "ai_model": MODEL,
+            "ai_configured": bool(os.getenv("ANTHROPIC_API_KEY"))}

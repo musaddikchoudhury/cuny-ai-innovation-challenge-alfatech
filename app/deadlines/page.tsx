@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Navbar } from "@/components/navbar"
 import Link from "next/link"
 import {
-  Calendar, Clock, ExternalLink, Bell, BellOff,
+  Calendar, Clock, ExternalLink, Bell,
   AlertTriangle, CheckCircle2, ArrowRight, RotateCcw,
 } from "lucide-react"
 
@@ -31,8 +31,49 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Internship":    "#059669",
 }
 
-function getDaysLeft(deadline: string): number {
-  return Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000)
+function getDaysLeft(deadline: string, now: number): number {
+  return Math.ceil((new Date(deadline).getTime() - now) / 86400000)
+}
+
+function readUserEmail(): string {
+  if (typeof window === "undefined") return ""
+  const raw = window.localStorage.getItem("bridge_user")
+  if (!raw) return ""
+  try {
+    return JSON.parse(raw).email || ""
+  } catch {
+    return ""
+  }
+}
+
+function readResources(): Resource[] {
+  if (typeof window === "undefined") return []
+  const raw = window.localStorage.getItem("bridge_matches")
+  if (!raw) return []
+
+  try {
+    const data = JSON.parse(raw)
+    const all: Resource[] = data.matches || []
+    return [...all].sort((a, b) => {
+      if (!a.deadline && !b.deadline) return 0
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+    })
+  } catch {
+    return []
+  }
+}
+
+function readReminded(): Set<string> {
+  if (typeof window === "undefined") return new Set()
+  const raw = window.localStorage.getItem("bridge_reminded")
+  if (!raw) return new Set()
+  try {
+    return new Set(JSON.parse(raw))
+  } catch {
+    return new Set()
+  }
 }
 
 function DeadlineChip({ days }: { days: number }) {
@@ -54,32 +95,11 @@ function DeadlineChip({ days }: { days: number }) {
 }
 
 export default function DeadlinesPage() {
-  const [resources, setResources] = useState<Resource[]>([])
-  const [reminded, setReminded]   = useState<Set<string>>(new Set())
-  const [userEmail, setUserEmail] = useState<string>("")
+  const [resources]               = useState<Resource[]>(readResources)
+  const [reminded, setReminded]   = useState<Set<string>>(readReminded)
+  const [userEmail]               = useState<string>(readUserEmail)
   const [filter, setFilter]       = useState<"all" | "urgent" | "upcoming" | "open">("all")
-
-  useEffect(() => {
-    const raw = localStorage.getItem("bridge_matches")
-    const user = localStorage.getItem("bridge_user")
-    if (user) setUserEmail(JSON.parse(user).email || "")
-    if (!raw) return
-    try {
-      const data = JSON.parse(raw)
-      const all: Resource[] = data.matches || []
-      // Sort: deadlines first (soonest), then no-deadline at bottom
-      const sorted = [...all].sort((a, b) => {
-        if (!a.deadline && !b.deadline) return 0
-        if (!a.deadline) return 1
-        if (!b.deadline) return -1
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
-      })
-      setResources(sorted)
-    } catch { /* ignore */ }
-
-    const rem = localStorage.getItem("bridge_reminded")
-    if (rem) setReminded(new Set(JSON.parse(rem)))
-  }, [])
+  const [now]                      = useState(() => Date.now())
 
   const scheduleReminder = async (res: Resource) => {
     if (!userEmail) {
@@ -87,7 +107,7 @@ export default function DeadlinesPage() {
       return
     }
     if (!res.deadline) {
-      alert("This program has no fixed deadline — it's rolling, so apply anytime.")
+      alert("This program has no fixed deadline - it is rolling, so apply anytime.")
       return
     }
     try {
@@ -114,14 +134,14 @@ export default function DeadlinesPage() {
   const withoutDeadline = resources.filter(r => !r.deadline)
 
   const filtered = (() => {
-    if (filter === "urgent")   return withDeadline.filter(r => getDaysLeft(r.deadline!) < 30)
-    if (filter === "upcoming") return withDeadline.filter(r => getDaysLeft(r.deadline!) >= 30)
+    if (filter === "urgent")   return withDeadline.filter(r => getDaysLeft(r.deadline!, now) < 30)
+    if (filter === "upcoming") return withDeadline.filter(r => getDaysLeft(r.deadline!, now) >= 30)
     if (filter === "open")     return withoutDeadline
     return resources
   })()
 
   const urgent = withDeadline.filter(r => {
-    const d = getDaysLeft(r.deadline!)
+    const d = getDaysLeft(r.deadline!, now)
     return d >= 0 && d < 14
   }).length
 
@@ -190,7 +210,7 @@ export default function DeadlinesPage() {
         <div className="tab-bar mb-6" style={{ width: "fit-content" }}>
           {([
             { key: "all",      label: `All (${resources.length})` },
-            { key: "urgent",   label: `Urgent (${withDeadline.filter(r => getDaysLeft(r.deadline!) < 30).length})` },
+            { key: "urgent",   label: `Urgent (${withDeadline.filter(r => getDaysLeft(r.deadline!, now) < 30).length})` },
             { key: "upcoming", label: "Upcoming" },
             { key: "open",     label: `Rolling (${withoutDeadline.length})` },
           ] as const).map(({ key, label }) => (
@@ -207,7 +227,7 @@ export default function DeadlinesPage() {
         {/* Resource list */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {filtered.map((res, i) => {
-            const daysLeft  = res.deadline ? getDaysLeft(res.deadline) : null
+            const daysLeft  = res.deadline ? getDaysLeft(res.deadline, now) : null
             const catColor  = CATEGORY_COLORS[res.category] ?? "#64748B"
             const isReminded = reminded.has(res.id)
 

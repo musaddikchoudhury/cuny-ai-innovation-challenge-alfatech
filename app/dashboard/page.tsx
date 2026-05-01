@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Navbar } from "@/components/navbar"
 import {
   ExternalLink, BookmarkPlus, BookmarkCheck, ChevronRight,
   AlertTriangle, MessageCircle, X, Send, Sparkles,
   Briefcase, GraduationCap, Building, Landmark,
-  RotateCcw, ArrowUpRight, CheckCircle2, Loader2, PenLine,
+  RotateCcw, ArrowUpRight, CheckCircle2, PenLine,
 } from "lucide-react"
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"
@@ -36,6 +36,46 @@ const CATEGORY_META: Record<string, { color: string; bg: string; icon: React.Ele
   "NYC Benefits":  { color: "#92400e", bg: "#FEF3C7", icon: Building },
   "Program":       { color: "#5b21b6", bg: "#EDE9FE", icon: Sparkles },
   "Internship":    { color: "#065f46", bg: "#D1FAE5", icon: Briefcase },
+}
+
+type DashboardSnapshot = {
+  data: MatchData | null
+  error: string | null
+  profile: Record<string, unknown>
+  savedIds: Set<string>
+}
+
+function readDashboardSnapshot(): DashboardSnapshot {
+  const fallback = {
+    data: null,
+    error: "No profile found. Please complete onboarding first.",
+    profile: {},
+    savedIds: new Set<string>(),
+  }
+
+  if (typeof window === "undefined") return fallback
+
+  const savedProfile = window.localStorage.getItem("bridge_profile")
+  const savedMatches = window.localStorage.getItem("bridge_matches")
+  const savedResources = window.localStorage.getItem("bridge_saved")
+
+  if (!savedProfile || !savedMatches) return fallback
+
+  try {
+    return {
+      data: JSON.parse(savedMatches) as MatchData,
+      error: null,
+      profile: JSON.parse(savedProfile),
+      savedIds: savedResources ? new Set(JSON.parse(savedResources)) : new Set<string>(),
+    }
+  } catch {
+    return {
+      data: null,
+      error: "Failed to load your profile data.",
+      profile: {},
+      savedIds: new Set<string>(),
+    }
+  }
 }
 
 // -- SKELETON -----------------------------------------------------------------
@@ -104,7 +144,7 @@ function ResumeCurationModal({ resource, profile, onClose }: {
   const [tailor, setTailor]   = useState<TailorData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saved, setSaved]     = useState(false)
-  const skills = (profile.skills as string[]) ?? []
+  const skills = useMemo(() => (profile.skills as string[] | undefined) ?? [], [profile.skills])
 
   useEffect(() => {
     async function fetchTailor() {
@@ -318,14 +358,14 @@ function BridgeBot({ profile }: { profile: Record<string, unknown> }) {
 }
 
 // -- RESOURCE CARD ------------------------------------------------------------
-function ResourceCard({ resource, onCurate, isSaved, onSave }: {
-  resource: Resource; onCurate: (r: Resource) => void; isSaved: boolean; onSave: (id: string) => void
+function ResourceCard({ resource, onCurate, isSaved, onSave, now }: {
+  resource: Resource; onCurate: (r: Resource) => void; isSaved: boolean; onSave: (id: string) => void; now: number
 }) {
   const meta   = CATEGORY_META[resource.category] ?? { color: "#64748B", bg: "#F8FAFC", icon: Landmark }
   const Icon   = meta.icon
   const isJob  = resource.category === "Internship"
   const daysLeft = resource.deadline
-    ? Math.ceil((new Date(resource.deadline).getTime() - Date.now()) / 86400000)
+    ? Math.ceil((new Date(resource.deadline).getTime() - now) / 86400000)
     : null
   const deadlineColor = daysLeft === null ? "#94A3B8" : daysLeft < 0 ? "#94A3B8" : daysLeft < 7 ? "#DC2626" : daysLeft < 30 ? "#D97706" : "#059669"
 
@@ -407,31 +447,30 @@ function StatCard({ label, value, accent, delay = 0 }: {
 
 // -- DASHBOARD PAGE -----------------------------------------------------------
 export default function DashboardPage() {
-  const [data, setData]             = useState<MatchData | null>(null)
-  const [error, setError]           = useState<string | null>(null)
+  const [initialState]              = useState<DashboardSnapshot>(readDashboardSnapshot)
+  const [data]                      = useState<MatchData | null>(initialState.data)
+  const [error]                     = useState<string | null>(initialState.error)
   const [activeTab, setActiveTab]   = useState("All")
-  const [savedIds, setSavedIds]     = useState<Set<string>>(new Set())
+  const [savedIds, setSavedIds]     = useState<Set<string>>(initialState.savedIds)
   const [curateTarget, setCurateTarget] = useState<Resource | null>(null)
-  const [profile, setProfile]       = useState<Record<string, unknown>>({})
+  const [profile]                   = useState<Record<string, unknown>>(initialState.profile)
   const [scoreAnimated, setScoreAnimated] = useState(false)
+  const [now]                       = useState(() => Date.now())
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem("bridge_profile")
-    const savedMatches = localStorage.getItem("bridge_matches")
-    if (!savedProfile || !savedMatches) { setError("No profile found. Please complete onboarding first."); return }
-    try {
-      setProfile(JSON.parse(savedProfile))
-      setData(JSON.parse(savedMatches) as MatchData)
-      setTimeout(() => setScoreAnimated(true), 300)
-    } catch { setError("Failed to load your profile data.") }
-    const rem = localStorage.getItem("bridge_saved")
-    if (rem) setSavedIds(new Set(JSON.parse(rem)))
-  }, [])
+    if (!data) return
+    const timer = setTimeout(() => setScoreAnimated(true), 300)
+    return () => clearTimeout(timer)
+  }, [data])
 
   const toggleSave = (id: string) => {
     setSavedIds(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
       localStorage.setItem("bridge_saved", JSON.stringify([...next]))
       return next
     })
@@ -513,7 +552,7 @@ export default function DashboardPage() {
               ? filteredMatches.map((m, i) => (
                   <motion.div key={m.id} custom={i} initial="hidden" animate="visible"
                     variants={{ hidden: { opacity: 0, y: 20 }, visible: (i) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06 } }) }}>
-                    <ResourceCard resource={m} onCurate={setCurateTarget} isSaved={savedIds.has(m.id)} onSave={toggleSave} />
+                    <ResourceCard resource={m} onCurate={setCurateTarget} isSaved={savedIds.has(m.id)} onSave={toggleSave} now={now} />
                   </motion.div>
                 ))
               : (
