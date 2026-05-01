@@ -34,26 +34,26 @@ export function Navbar() {
   }
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-[74px] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 text-slate-950">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-950 shadow-sm">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-700 shadow-lg shadow-blue-700/25 sm:h-11 sm:w-11">
             <Sparkles className="h-4 w-4 text-white" strokeWidth={2.5} />
           </span>
-          <span className="text-base font-semibold tracking-normal">
+          <span className="text-base font-bold tracking-normal sm:text-lg">
             Bridge<span className="text-blue-700">AI</span>
           </span>
         </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
           {NAV_LINKS.map(({ label, href }) => {
             const active = pathname === href
             return (
               <Link
                 key={href}
                 href={href}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                  active ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                className={`rounded-xl px-5 py-3 text-base font-semibold transition ${
+                  active ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-950"
                 }`}
               >
                 {label}
@@ -63,8 +63,8 @@ export function Navbar() {
         </div>
 
         {user ? (
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 sm:flex">
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 sm:flex">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-blue-700">
                 <User className="h-3.5 w-3.5" />
               </span>
@@ -72,7 +72,7 @@ export function Navbar() {
             </div>
             <button
               onClick={logout}
-              className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               <LogOut className="h-4 w-4" />
               Log out
@@ -82,13 +82,13 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             <Link
               href="/login"
-              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:px-5 sm:text-base"
             >
               Log in
             </Link>
             <Link
               href="/onboard"
-              className="inline-flex items-center gap-2 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="hidden items-center gap-2 rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-700/25 transition hover:bg-blue-600 sm:inline-flex sm:px-5 sm:text-base"
             >
               Get Started
               <ArrowRight className="h-4 w-4" />

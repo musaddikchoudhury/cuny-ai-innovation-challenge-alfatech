@@ -1,9 +1,21 @@
 "use client"
 
-import { useState, useCallback, Suspense } from "react"
+import { Suspense, useCallback, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
-import { Upload, LinkIcon, FileText, CheckCircle2, Loader2, X, File, ShieldCheck, ArrowRight } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import {
+  ArrowRight,
+  CheckCircle2,
+  File,
+  FileText,
+  Link2,
+  Loader2,
+  ShieldCheck,
+  Upload,
+  X,
+  type LucideIcon,
+} from "lucide-react"
+import { Navbar } from "@/components/navbar"
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"
 
@@ -12,16 +24,59 @@ type Tab = "link" | "upload" | "form"
 interface UploadedFile {
   file: File
   type: "transcript" | "resume" | "fafsa" | "other"
-  status: "idle" | "processing" | "done" | "error"
+}
+
+type IntakeOption = {
+  id: Tab
+  icon: LucideIcon
+  title: string
+  detail: string
+  time: string
+  tone: string
+  badge?: string
 }
 
 const PROCESSING_STEPS = [
-  "Extracting document text…",
-  "Parsing eligibility signals…",
-  "Cross-referencing 60+ programs…",
-  "Ranking matches by fit…",
-  "Generating your Access Score…",
+  "Extracting profile signals",
+  "Cross-referencing 60+ resources",
+  "Ranking matches by fit",
+  "Building your decision ledger",
 ]
+
+const OPTIONS: IntakeOption[] = [
+  {
+    id: "link",
+    icon: Link2,
+    title: "Paste LinkedIn URL",
+    detail: "We extract your education, skills, and experience automatically in seconds.",
+    time: "~5 sec",
+    tone: "bg-blue-50 text-blue-700",
+  },
+  {
+    id: "upload",
+    icon: Upload,
+    title: "Upload Documents",
+    detail: "Drop your transcript, FAFSA, or resume PDF. Our AI reads it instantly.",
+    time: "~15 sec",
+    tone: "bg-emerald-50 text-emerald-700",
+    badge: "Most Popular",
+  },
+  {
+    id: "form",
+    icon: FileText,
+    title: "Quick Profile Form",
+    detail: "Answer a few questions and get a full resource match without documents.",
+    time: "~3 min",
+    tone: "bg-violet-50 text-violet-700",
+  },
+]
+
+const FILE_TYPE_LABELS: Record<UploadedFile["type"], string> = {
+  transcript: "Transcript",
+  resume: "Resume",
+  fafsa: "FAFSA / SAR",
+  other: "Document",
+}
 
 async function readApiError(res: Response) {
   try {
@@ -34,7 +89,49 @@ async function readApiError(res: Response) {
   return await res.text()
 }
 
-// ── INNER COMPONENT (needs useSearchParams) ───────────────────────────────────
+function classifyFile(file: File): UploadedFile["type"] {
+  const name = file.name.toLowerCase()
+  if (name.includes("transcript")) return "transcript"
+  if (name.includes("resume")) return "resume"
+  if (name.includes("fafsa")) return "fafsa"
+  return "other"
+}
+
+function ProcessingScreen({ step }: { step: number }) {
+  return (
+    <main className="min-h-screen bg-[#eef8ff] px-6 py-24">
+      <Navbar />
+      <section className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-xl flex-col items-center justify-center text-center">
+        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="w-full">
+          <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-100">
+            <Loader2 className="h-9 w-9 animate-spin text-blue-700" />
+          </div>
+          <h1 className="text-3xl font-black tracking-normal text-slate-950">Building your resource ledger</h1>
+          <p className="mt-3 text-base font-medium text-slate-500">BridgeAI is matching your profile against CUNY and NYC programs.</p>
+          <div className="mt-10 space-y-3">
+            {PROCESSING_STEPS.map((item, index) => (
+              <div
+                key={item}
+                className={`flex items-center gap-3 rounded-2xl border px-5 py-4 text-left transition ${
+                  index <= step ? "border-slate-200 bg-white" : "border-transparent bg-transparent"
+                }`}
+              >
+                {index < step ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                ) : index === step ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-700" />
+                ) : (
+                  <span className="h-5 w-5 rounded-full border border-slate-300" />
+                )}
+                <span className={`text-sm font-bold ${index <= step ? "text-slate-900" : "text-slate-400"}`}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </section>
+    </main>
+  )
+}
 
 function OnboardInner() {
   const router = useRouter()
@@ -42,13 +139,12 @@ function OnboardInner() {
   const initialTab = (searchParams.get("tab") as Tab) ?? "upload"
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
-  const [files, setFiles]         = useState<UploadedFile[]>([])
+  const [files, setFiles] = useState<UploadedFile[]>([])
   const [linkedinUrl, setLinkedinUrl] = useState("")
   const [processing, setProcessing] = useState(false)
   const [processingStep, setProcessingStep] = useState(0)
-  const [dragOver, setDragOver]   = useState(false)
-
-  // Quick form state
+  const [dragOver, setDragOver] = useState(false)
+  const [error, setError] = useState("")
   const [form, setForm] = useState({
     gpa: "",
     credits: "",
@@ -60,494 +156,325 @@ function OnboardInner() {
     is_first_gen: false,
   })
 
-  // ── PROCESSING ANIMATION ──
   const runProcessingAnimation = useCallback(async () => {
     for (let i = 0; i < PROCESSING_STEPS.length; i++) {
       setProcessingStep(i)
-      await new Promise(r => setTimeout(r, 700))
+      await new Promise((resolve) => setTimeout(resolve, 650))
     }
   }, [])
 
-  // ── HANDLE PDF UPLOAD ──
   const handleFiles = useCallback((incoming: FileList | null) => {
     if (!incoming) return
-    const newFiles: UploadedFile[] = Array.from(incoming).map(file => ({
-      file,
-      type: file.name.toLowerCase().includes("transcript") ? "transcript"
-          : file.name.toLowerCase().includes("resume")     ? "resume"
-          : file.name.toLowerCase().includes("fafsa")      ? "fafsa"
-          : "other",
-      status: "idle",
-    }))
-    setFiles(prev => [...prev, ...newFiles].slice(0, 4))
+    const next = Array.from(incoming).map((file) => ({ file, type: classifyFile(file) }))
+    setFiles((current) => [...current, ...next].slice(0, 4))
   }, [])
 
-  const removeFile = (i: number) => setFiles(prev => prev.filter((_, idx) => idx !== i))
+  const saveAndOpenDashboard = async (profile: Record<string, unknown>) => {
+    const matchRes = await fetch(`${API}/match/ledger`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profile),
+    })
 
-  // ── SUBMIT: UPLOAD ──
+    if (!matchRes.ok) throw new Error(await readApiError(matchRes))
+    const matchData = await matchRes.json()
+    localStorage.setItem("bridge_profile", JSON.stringify(profile))
+    localStorage.setItem("bridge_matches", JSON.stringify(matchData))
+    router.push("/dashboard")
+  }
+
   const submitUpload = async () => {
-    if (files.length === 0) return
+    if (files.length === 0) {
+      setError("Upload at least one PDF to continue.")
+      return
+    }
+
+    setError("")
     setProcessing(true)
+    void runProcessingAnimation()
 
     try {
-      runProcessingAnimation()
-
-      const primaryFile = files[0].file
       const formData = new FormData()
-      formData.append("file", primaryFile)
+      formData.append("file", files[0].file)
 
-      const extractRes = await fetch(`${API}/extract-profile`, {
-        method: "POST",
-        body: formData,
-      })
-
+      const extractRes = await fetch(`${API}/extract-profile`, { method: "POST", body: formData })
       if (!extractRes.ok) throw new Error(await readApiError(extractRes))
-      const profile = await extractRes.json()
 
-      const matchRes = await fetch(`${API}/match/ledger`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
-      })
-
-      if (!matchRes.ok) throw new Error(await readApiError(matchRes))
-      const matchData = await matchRes.json()
-
-      localStorage.setItem("bridge_profile", JSON.stringify(profile))
-      localStorage.setItem("bridge_matches", JSON.stringify(matchData))
-
-      await new Promise(r => setTimeout(r, 400))
-      router.push("/dashboard")
+      await saveAndOpenDashboard(await extractRes.json())
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error"
-      alert(`Error: ${msg}\n\nIs the Python backend running on port 8000?`)
+      setError(err instanceof Error ? err.message : "Something went wrong.")
       setProcessing(false)
     }
   }
 
-  // ── SUBMIT: LINKEDIN ──
   const submitLinkedin = async () => {
     if (!linkedinUrl.includes("linkedin.com")) {
-      alert("Please paste a valid LinkedIn profile URL.")
+      setError("Paste a valid LinkedIn profile URL.")
       return
     }
+
+    setError("")
     setProcessing(true)
-    runProcessingAnimation()
+    void runProcessingAnimation()
 
     try {
-      // For demo: parse LinkedIn URL domain to a basic profile
-      // In production: call Proxycurl endpoint
-      const mockProfile = {
-        gpa: 3.5, credits: 30, major: "Business Administration",
-        income: null, skills: ["Excel", "Data Analysis", "Communication"],
-        citizenship: "US Citizen", enrollment: "Full-Time",
-        is_first_gen: false, has_dependents: false,
-      }
-
-      const matchRes = await fetch(`${API}/match/ledger`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mockProfile),
+      await saveAndOpenDashboard({
+        gpa: 3.5,
+        credits: 30,
+        major: "Business Administration",
+        income: null,
+        skills: ["Excel", "Data Analysis", "Communication"],
+        citizenship: "US Citizen",
+        enrollment: "Full-Time",
+        is_first_gen: false,
+        has_dependents: false,
       })
-
-      if (!matchRes.ok) throw new Error(await readApiError(matchRes))
-      const matchData = await matchRes.json()
-
-      localStorage.setItem("bridge_profile", JSON.stringify(mockProfile))
-      localStorage.setItem("bridge_matches", JSON.stringify(matchData))
-      router.push("/dashboard")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error"
-      alert(`Error: ${msg}`)
+      setError(err instanceof Error ? err.message : "Something went wrong.")
       setProcessing(false)
     }
   }
 
-  // ── SUBMIT: FORM ──
   const submitForm = async () => {
     if (!form.gpa || !form.credits) {
-      alert("GPA and credits are required.")
+      setError("GPA and credits are required.")
       return
     }
+
+    setError("")
     setProcessing(true)
-    runProcessingAnimation()
+    void runProcessingAnimation()
 
     try {
-      const profile = {
+      await saveAndOpenDashboard({
         gpa: parseFloat(form.gpa),
-        credits: parseInt(form.credits),
+        credits: parseInt(form.credits, 10),
         major: form.major || "Undecided",
-        income: form.income ? parseInt(form.income) : null,
+        income: form.income ? parseInt(form.income, 10) : null,
         citizenship: form.citizenship,
         enrollment: form.enrollment,
+        borough: form.borough || null,
         skills: [],
         is_first_gen: form.is_first_gen,
         has_dependents: false,
-        borough: form.borough || null,
-      }
-
-      const matchRes = await fetch(`${API}/match/ledger`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
       })
-
-      if (!matchRes.ok) throw new Error(await readApiError(matchRes))
-      const matchData = await matchRes.json()
-
-      localStorage.setItem("bridge_profile", JSON.stringify(profile))
-      localStorage.setItem("bridge_matches", JSON.stringify(matchData))
-      router.push("/dashboard")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error"
-      alert(`Error: ${msg}`)
+      setError(err instanceof Error ? err.message : "Something went wrong.")
       setProcessing(false)
     }
   }
 
-  const FILE_TYPE_LABELS: Record<string, string> = {
-    transcript: "Transcript",
-    resume: "Resume",
-    fafsa: "FAFSA / SAR",
-    other: "Document",
-  }
+  if (processing) return <ProcessingScreen step={processingStep} />
 
-  // ── PROCESSING SCREEN ──
-  if (processing) {
-    return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center px-6"
-        style={{ background: "var(--surface-2)" }}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md text-center"
-        >
-          <div
-            style={{
-              width: 72, height: 72,
-              background: "var(--accent-3)",
-              borderRadius: 24,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 32px",
-            }}
-          >
-            <Loader2 size={32} color="var(--accent)" className="animate-spin" />
-          </div>
-
-          <h2 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-1)", marginBottom: 12 }}>
-            Analyzing Your Profile
-          </h2>
-          <p style={{ fontSize: 15, color: "var(--text-3)", marginBottom: 40 }}>
-            Our AI is matching you against 60+ programs
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {PROCESSING_STEPS.map((step, i) => (
-              <div
-                key={step}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "12px 16px",
-                  background: i <= processingStep ? "var(--bg)" : "transparent",
-                  border: `1px solid ${i <= processingStep ? "var(--border)" : "transparent"}`,
-                  borderRadius: "var(--r-md)",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                {i < processingStep ? (
-                  <CheckCircle2 size={16} color="var(--success)" />
-                ) : i === processingStep ? (
-                  <Loader2 size={16} color="var(--accent)" className="animate-spin" />
-                ) : (
-                  <div style={{ width: 16, height: 16, borderRadius: "50%", border: "1.5px solid var(--border)" }} />
-                )}
-                <span
-                  style={{
-                    fontSize: 13, fontWeight: 500,
-                    color: i <= processingStep ? "var(--text-1)" : "var(--text-muted)",
-                  }}
-                >
-                  {step}
-                </span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-    )
-  }
-
-  // ── MAIN ONBOARD UI ──
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-6 py-24"
-      style={{ background: "linear-gradient(180deg, var(--surface-2) 0%, white 100%)" }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-xl"
-      >
-        {/* Header */}
-        <div className="text-center mb-10">
-          <h1 style={{ fontSize: 30, fontWeight: 700, color: "var(--text-1)", letterSpacing: "-0.8px", marginBottom: 8 }}>
-            Let&apos;s build your profile
-          </h1>
-          <p style={{ fontSize: 15, color: "var(--text-3)" }}>
-            Choose the fastest option for you. All paths lead to your personalized matches.
+    <main className="min-h-screen bg-[#eef8ff] pb-24 text-slate-950">
+      <Navbar />
+      <section className="mx-auto w-full max-w-7xl px-5 pt-[118px]">
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-blue-700">Three ways to start</p>
+          <h1 className="mt-8 text-5xl font-black leading-tight tracking-normal sm:text-6xl">Choose your path in</h1>
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-500">
+            Start with documents, a profile link, or a quick form. Each path opens the same decision engine.
           </p>
-        </div>
+        </motion.div>
 
-        {/* Tab Bar */}
-        <div className="tab-bar mb-8">
-          {([
-            { id: "upload", icon: Upload,   label: "Upload Docs" },
-            { id: "link",   icon: LinkIcon,  label: "LinkedIn URL" },
-            { id: "form",   icon: FileText,  label: "Quick Form"  },
-          ] as const).map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`tab-item flex-1 flex items-center justify-center gap-2 ${activeTab === id ? "active" : ""}`}
-            >
-              <Icon size={14} />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* ── TAB: UPLOAD ── */}
-        <AnimatePresence mode="wait">
-          {activeTab === "upload" && (
-            <motion.div key="upload" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
-              <div
-                className="card p-8"
-                onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={e => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files) }}
+        <div className="mt-16 grid gap-8 lg:grid-cols-3">
+          {OPTIONS.map((option, index) => {
+            const Icon = option.icon
+            const active = activeTab === option.id
+            return (
+              <motion.button
+                key={option.id}
+                type="button"
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: index * 0.06 }}
+                onClick={() => {
+                  setActiveTab(option.id)
+                  setError("")
+                }}
+                className={`relative flex min-h-[330px] flex-col rounded-[22px] border bg-white p-10 text-left shadow-md shadow-slate-200/70 transition hover:-translate-y-1 hover:shadow-xl ${
+                  active ? "border-2 border-blue-700" : "border-slate-200"
+                }`}
               >
+                {option.badge && (
+                  <span className="absolute right-8 top-7 rounded-full bg-blue-100 px-4 py-1 text-sm font-bold text-blue-700">
+                    {option.badge}
+                  </span>
+                )}
+                <div className={`mb-10 flex h-16 w-16 items-center justify-center rounded-2xl ${option.tone}`}>
+                  <Icon className="h-7 w-7" />
+                </div>
+                <h2 className="text-2xl font-black tracking-normal text-slate-950">{option.title}</h2>
+                <p className="mt-4 text-lg leading-8 text-slate-500">{option.detail}</p>
+                <div className="mt-auto flex items-center justify-between pt-10">
+                  <span className={`rounded-full px-4 py-2 text-sm font-bold ${option.tone}`}>{option.time}</span>
+                  <ArrowRight className={`h-6 w-6 ${active ? "text-blue-700" : "text-slate-400"}`} />
+                </div>
+              </motion.button>
+            )
+          })}
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.section
+            key={activeTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+            className="mx-auto mt-10 max-w-3xl rounded-[22px] border border-slate-200 bg-white p-6 shadow-md shadow-slate-200/70 sm:p-8"
+          >
+            {error && (
+              <p className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                {error}
+              </p>
+            )}
+
+            {activeTab === "upload" && (
+              <div>
                 <label
                   htmlFor="file-upload"
-                  style={{
-                    display: "flex", flexDirection: "column", alignItems: "center",
-                    padding: "40px 20px",
-                    border: `2px dashed ${dragOver ? "var(--accent)" : "var(--border)"}`,
-                    borderRadius: "var(--r-lg)",
-                    background: dragOver ? "var(--accent-3)" : "var(--surface)",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    marginBottom: files.length > 0 ? 20 : 0,
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setDragOver(true)
                   }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    setDragOver(false)
+                    handleFiles(event.dataTransfer.files)
+                  }}
+                  className={`flex cursor-pointer flex-col items-center rounded-[20px] border-2 border-dashed px-6 py-12 text-center transition ${
+                    dragOver ? "border-blue-700 bg-blue-50" : "border-slate-200 bg-slate-50"
+                  }`}
                 >
-                  <Upload size={28} color={dragOver ? "var(--accent)" : "var(--text-muted)"} style={{ marginBottom: 14 }} />
-                  <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>
-                    Drop files here or click to upload
-                  </p>
-                  <p style={{ fontSize: 13, color: "var(--text-3)", textAlign: "center" }}>
-                    Transcript · Resume · FAFSA · Financial Aid Award Letter
-                  </p>
-                  <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>PDF only · Max 4 files</p>
-                  <input
-                    id="file-upload"
-                    type="file"
-                    accept=".pdf"
-                    multiple
-                    className="hidden"
-                    onChange={e => handleFiles(e.target.files)}
-                  />
+                  <Upload className={`h-9 w-9 ${dragOver ? "text-blue-700" : "text-slate-400"}`} />
+                  <p className="mt-5 text-lg font-black text-slate-950">Drop files here or click to upload</p>
+                  <p className="mt-2 text-sm font-medium text-slate-500">Transcript, resume, FAFSA, or award letter PDF</p>
+                  <input id="file-upload" type="file" accept=".pdf" multiple className="hidden" onChange={(event) => handleFiles(event.target.files)} />
                 </label>
 
-                {/* File list */}
                 {files.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {files.map((f, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 12,
-                          padding: "10px 14px",
-                          background: "var(--surface)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "var(--r-md)",
-                        }}
-                      >
-                        <File size={15} color="var(--accent)" />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {f.file.name}
-                          </p>
-                          <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{FILE_TYPE_LABELS[f.type]}</p>
+                  <div className="mt-6 space-y-3">
+                    {files.map((uploaded, index) => (
+                      <div key={`${uploaded.file.name}-${index}`} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <File className="h-5 w-5 text-blue-700" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-slate-950">{uploaded.file.name}</p>
+                          <p className="text-xs font-semibold text-slate-400">{FILE_TYPE_LABELS[uploaded.type]}</p>
                         </div>
-                        <button onClick={() => removeFile(i)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-                          <X size={14} color="var(--text-muted)" />
+                        <button type="button" onClick={() => setFiles((current) => current.filter((_, i) => i !== index))} className="rounded-full p-2 text-slate-400 hover:bg-white">
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
                     ))}
-
-                    <button
-                      onClick={submitUpload}
-                      className="btn-primary w-full mt-2"
-                      style={{ justifyContent: "center" }}
-                    >
-                      Analyze {files.length} File{files.length > 1 ? "s" : ""} <ArrowRight size={15} />
+                    <button type="button" onClick={submitUpload} className="btn-primary mt-2 w-full text-base">
+                      Analyze Documents
+                      <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
                 )}
               </div>
-            </motion.div>
-          )}
+            )}
 
-          {/* ── TAB: LINKEDIN ── */}
-          {activeTab === "link" && (
-            <motion.div key="link" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
-              <div className="card p-8">
-                <div
-                  style={{
-                    display: "flex", alignItems: "center", gap: 14,
-                    padding: "20px",
-                    background: "var(--accent-3)",
-                    borderRadius: "var(--r-lg)",
-                    marginBottom: 28,
-                  }}
-                >
-                  <LinkIcon size={22} color="var(--accent)" />
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>LinkedIn Profile URL</p>
-                    <p style={{ fontSize: 12, color: "var(--text-3)" }}>We extract education, skills, and experience automatically</p>
-                  </div>
-                </div>
-
+            {activeTab === "link" && (
+              <div>
+                <label className="mb-3 block text-sm font-black text-slate-700">LinkedIn profile URL</label>
                 <input
                   type="url"
-                  className="input mb-4"
+                  className="input"
                   placeholder="https://www.linkedin.com/in/your-profile"
                   value={linkedinUrl}
-                  onChange={e => setLinkedinUrl(e.target.value)}
+                  onChange={(event) => setLinkedinUrl(event.target.value)}
                 />
-                <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 24 }}>
-                  Also works with Handshake profile text — just paste it below.
-                </p>
-
-                <button
-                  onClick={submitLinkedin}
-                  disabled={!linkedinUrl}
-                  className="btn-primary w-full"
-                  style={{ justifyContent: "center", opacity: linkedinUrl ? 1 : 0.4 }}
-                >
-                  Import Profile <ArrowRight size={15} />
+                <button type="button" onClick={submitLinkedin} className="btn-primary mt-5 w-full text-base">
+                  Import Profile
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
-            </motion.div>
-          )}
+            )}
 
-          {/* ── TAB: FORM ── */}
-          {activeTab === "form" && (
-            <motion.div key="form" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
-              <div className="card p-8" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <div className="grid grid-cols-2 gap-4">
+            {activeTab === "form" && (
+              <div className="grid gap-5">
+                <div className="grid gap-5 sm:grid-cols-2">
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
-                      GPA *
-                    </label>
-                    <input type="number" step="0.1" min="0" max="4" className="input" placeholder="3.5"
-                      value={form.gpa} onChange={e => setForm(f => ({ ...f, gpa: e.target.value }))} />
+                    <label className="mb-2 block text-sm font-black text-slate-700">GPA</label>
+                    <input type="number" step="0.1" min="0" max="4" className="input" placeholder="3.5" value={form.gpa} onChange={(event) => setForm((current) => ({ ...current, gpa: event.target.value }))} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
-                      Credits Completed *
-                    </label>
-                    <input type="number" min="0" className="input" placeholder="30"
-                      value={form.credits} onChange={e => setForm(f => ({ ...f, credits: e.target.value }))} />
+                    <label className="mb-2 block text-sm font-black text-slate-700">Credits completed</label>
+                    <input type="number" min="0" className="input" placeholder="30" value={form.credits} onChange={(event) => setForm((current) => ({ ...current, credits: event.target.value }))} />
                   </div>
                 </div>
-
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
-                    Major / Field of Study
-                  </label>
-                  <input type="text" className="input" placeholder="Computer Science"
-                    value={form.major} onChange={e => setForm(f => ({ ...f, major: e.target.value }))} />
+                  <label className="mb-2 block text-sm font-black text-slate-700">Major / field of study</label>
+                  <input type="text" className="input" placeholder="Computer Science" value={form.major} onChange={(event) => setForm((current) => ({ ...current, major: event.target.value }))} />
                 </div>
-
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
-                    Annual Household Income (optional)
-                  </label>
-                  <input type="number" className="input" placeholder="45000"
-                    value={form.income} onChange={e => setForm(f => ({ ...f, income: e.target.value }))} />
+                  <label className="mb-2 block text-sm font-black text-slate-700">Annual household income</label>
+                  <input type="number" className="input" placeholder="45000" value={form.income} onChange={(event) => setForm((current) => ({ ...current, income: event.target.value }))} />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-5 sm:grid-cols-3">
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
-                      Enrollment
-                    </label>
-                    <select className="input" value={form.enrollment} onChange={e => setForm(f => ({ ...f, enrollment: e.target.value }))}>
+                    <label className="mb-2 block text-sm font-black text-slate-700">Enrollment</label>
+                    <select className="input" value={form.enrollment} onChange={(event) => setForm((current) => ({ ...current, enrollment: event.target.value }))}>
                       <option>Full-Time</option>
                       <option>Part-Time</option>
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
-                      Citizenship Status
-                    </label>
-                    <select className="input" value={form.citizenship} onChange={e => setForm(f => ({ ...f, citizenship: e.target.value }))}>
+                    <label className="mb-2 block text-sm font-black text-slate-700">Citizenship</label>
+                    <select className="input" value={form.citizenship} onChange={(event) => setForm((current) => ({ ...current, citizenship: event.target.value }))}>
                       <option>US Citizen</option>
                       <option>Permanent Resident</option>
                       <option>DACA</option>
                       <option>International</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-slate-700">Borough</label>
+                    <select className="input" value={form.borough} onChange={(event) => setForm((current) => ({ ...current, borough: event.target.value }))}>
+                      <option value="">Select</option>
+                      <option>Manhattan</option>
+                      <option>Brooklyn</option>
+                      <option>Queens</option>
+                      <option>Bronx</option>
+                      <option>Staten Island</option>
+                    </select>
+                  </div>
                 </div>
-
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
-                    NYC Borough
-                  </label>
-                  <select className="input" value={form.borough} onChange={e => setForm(f => ({ ...f, borough: e.target.value }))}>
-                    <option value="">Select borough</option>
-                    <option>Manhattan</option>
-                    <option>Brooklyn</option>
-                    <option>Queens</option>
-                    <option>Bronx</option>
-                    <option>Staten Island</option>
-                  </select>
-                </div>
-
-                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14, color: "var(--text-2)" }}>
-                  <input type="checkbox" checked={form.is_first_gen} onChange={e => setForm(f => ({ ...f, is_first_gen: e.target.checked }))}
-                    style={{ width: 16, height: 16, accentColor: "var(--accent)" }} />
+                <label className="flex items-center gap-3 text-sm font-bold text-slate-600">
+                  <input type="checkbox" checked={form.is_first_gen} onChange={(event) => setForm((current) => ({ ...current, is_first_gen: event.target.checked }))} className="h-4 w-4 accent-blue-700" />
                   First-generation college student
                 </label>
-
-                <button onClick={submitForm} className="btn-primary" style={{ justifyContent: "center" }}>
-                  Find My Matches <ArrowRight size={15} />
+                <button type="button" onClick={submitForm} className="btn-primary w-full text-base">
+                  Find My Matches
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
-            </motion.div>
-          )}
+            )}
+          </motion.section>
         </AnimatePresence>
 
-        {/* Security note */}
-        <div className="flex items-center justify-center gap-2 mt-6"
-          style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
-          <ShieldCheck size={14} color="var(--success)" />
+        <div className="mt-7 flex items-center justify-center gap-2 text-center text-sm font-bold text-slate-400">
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
           Your documents are processed securely and never stored permanently
         </div>
-      </motion.div>
-    </div>
+      </section>
+    </main>
   )
 }
 
-// ── PAGE EXPORT (Suspense required for useSearchParams) ───────────────────────
-
 export default function OnboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surface-2)" }}>
-      <Loader2 size={24} className="animate-spin" color="var(--accent)" />
-    </div>}>
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#eef8ff]">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-700" />
+        </main>
+      }
+    >
       <OnboardInner />
     </Suspense>
   )
