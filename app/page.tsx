@@ -91,24 +91,24 @@ function fadeIn(index = 0) {
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-[#f6f8fb] text-slate-950">
+    <main className="min-h-screen overflow-x-hidden bg-[#f6f8fb] text-slate-950">
       <Navbar />
 
-      <section className="relative overflow-hidden border-b border-slate-200 bg-white pt-28">
+      <section className="relative overflow-hidden border-b border-slate-200 bg-white pt-24 sm:pt-28">
         <div className="absolute inset-x-0 top-0 h-2 bg-[linear-gradient(90deg,#0f766e,#2563eb,#f59e0b,#e11d48)]" />
-        <div className="mx-auto grid max-w-7xl gap-12 px-6 pb-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+        <div className="mx-auto grid w-full max-w-7xl min-w-0 gap-10 px-4 pb-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,520px)] lg:items-center xl:grid-cols-[minmax(0,1fr)_minmax(420px,560px)] xl:gap-14">
           <motion.div
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="max-w-3xl"
+            className="min-w-0 max-w-3xl"
           >
             <div className="mb-6 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
               Public benefit eligibility layer
             </div>
 
-            <h1 className="max-w-4xl text-5xl font-semibold leading-[1.05] tracking-normal text-slate-950 md:text-6xl">
+            <h1 className="max-w-[760px] text-4xl font-semibold leading-[1.05] tracking-normal text-slate-950 sm:text-5xl lg:text-[4rem] xl:text-[4.5rem]">
               BridgeAI Civic Decision Engine
             </h1>
 
@@ -135,8 +135,8 @@ export default function LandingPage() {
 
             <div className="mt-8 grid max-w-2xl grid-cols-1 gap-3 text-sm text-slate-600 sm:grid-cols-3">
               {["No account required", "Explainable matches", "Student-first privacy"].map((item) => (
-                <div key={item} className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <div key={item} className="flex min-w-0 items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                   <span>{item}</span>
                 </div>
               ))}
@@ -147,33 +147,33 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.08, ease: "easeOut" }}
-            className="rounded-lg border border-slate-200 bg-slate-950 p-4 shadow-xl shadow-slate-200"
+            className="w-full min-w-0 max-w-xl justify-self-center rounded-lg border border-slate-200 bg-slate-950 p-3 shadow-xl shadow-slate-200 sm:p-4 lg:justify-self-end"
           >
-            <div className="rounded-md bg-white">
-              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                <div>
+            <div className="min-w-0 rounded-md bg-white">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5">
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Decision queue
                   </p>
-                  <h2 className="text-base font-semibold text-slate-950">
+                  <h2 className="text-base font-semibold leading-snug text-slate-950">
                     Student resource determination
                   </h2>
                 </div>
-                <span className="rounded-md bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                <span className="shrink-0 rounded-md bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
                   Ready
                 </span>
               </div>
 
-              <div className="grid gap-4 p-5">
-                <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-4 p-4 sm:p-5">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   {[
                     ["GPA", "3.42"],
                     ["Credits", "31"],
                     ["Income", "$38K"],
                   ].map(([label, value]) => (
-                    <div key={label} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                    <div key={label} className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-3">
                       <p className="text-xs font-medium text-slate-500">{label}</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-950">{value}</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-950 sm:text-xl">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -184,11 +184,11 @@ export default function LandingPage() {
                       key={program.name}
                       className="grid grid-cols-[1fr_auto] gap-4 border-b border-slate-200 px-4 py-3 last:border-b-0"
                     >
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-semibold text-slate-950">{program.name}</p>
                         <p className="text-xs text-slate-500">{program.category}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="shrink-0 text-right">
                         <p className="font-semibold text-slate-950">{program.value}</p>
                         <p className={index === 0 ? "text-xs font-medium text-emerald-700" : "text-xs font-medium text-blue-700"}>
                           {program.status}
@@ -200,7 +200,7 @@ export default function LandingPage() {
 
                 <div className="rounded-md bg-slate-950 p-4 text-white">
                   <div className="flex items-start gap-3">
-                    <Sparkles className="mt-0.5 h-5 w-5 text-amber-300" />
+                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
                     <div>
                       <p className="text-sm font-semibold">Recommended first action</p>
                       <p className="mt-1 text-sm leading-6 text-slate-300">
@@ -216,18 +216,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-b border-slate-200 bg-slate-50 px-6 py-8">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 md:grid-cols-4">
+      <section className="border-b border-slate-200 bg-slate-50 px-4 py-8 sm:px-6">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map((metric, index) => {
             const Icon = metric.icon
             return (
               <motion.div
                 key={metric.label}
                 {...fadeIn(index)}
-                className="rounded-lg border border-slate-200 bg-white p-5"
+                className="min-w-0 rounded-lg border border-slate-200 bg-white p-5"
               >
-                <div className="flex items-center gap-3">
-                  <Icon className={`h-5 w-5 ${metric.color}`} />
+                <div className="flex min-w-0 items-center gap-3">
+                  <Icon className={`h-5 w-5 shrink-0 ${metric.color}`} />
                   <p className="text-2xl font-semibold text-slate-950">{metric.value}</p>
                 </div>
                 <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -239,8 +239,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-white px-6 py-16">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+      <section className="bg-white px-4 py-16 sm:px-6">
+        <div className="mx-auto grid w-full max-w-7xl min-w-0 gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
           <motion.div {...fadeIn()} className="max-w-xl">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
               Decision infrastructure
@@ -254,12 +254,12 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid min-w-0 gap-4 md:grid-cols-2">
             {workflow.map((item, index) => (
               <motion.div
                 key={item}
                 {...fadeIn(index)}
-                className="rounded-lg border border-slate-200 bg-slate-50 p-5"
+                className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-5"
               >
                 <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-md bg-white text-sm font-semibold text-slate-950 ring-1 ring-slate-200">
                   {index + 1}
@@ -271,8 +271,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-y border-slate-200 bg-[#f6f8fb] px-6 py-16">
-        <div className="mx-auto max-w-7xl">
+      <section className="border-y border-slate-200 bg-[#f6f8fb] px-4 py-16 sm:px-6">
+        <div className="mx-auto w-full max-w-7xl">
           <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
@@ -291,14 +291,14 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid min-w-0 gap-4 md:grid-cols-3">
             {intakeMethods.map((method, index) => {
               const Icon = method.icon
               return (
                 <motion.div key={method.title} {...fadeIn(index)}>
                   <Link
                     href={method.href}
-                    className="block h-full rounded-lg border border-slate-200 bg-white p-6 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200"
+                    className="block h-full min-w-0 rounded-lg border border-slate-200 bg-white p-6 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200"
                   >
                     <div className={`mb-5 flex h-11 w-11 items-center justify-center rounded-md ring-1 ${method.color}`}>
                       <Icon className="h-5 w-5" />
@@ -313,9 +313,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-white px-6 py-16">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-          <motion.div {...fadeIn()} className="rounded-lg border border-slate-200">
+      <section className="bg-white px-4 py-16 sm:px-6">
+        <div className="mx-auto grid w-full max-w-7xl min-w-0 gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <motion.div {...fadeIn()} className="min-w-0 rounded-lg border border-slate-200">
             <div className="border-b border-slate-200 px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Program ledger
@@ -327,11 +327,11 @@ export default function LandingPage() {
             <div className="divide-y divide-slate-200">
               {programPreview.map((program) => (
                 <div key={program.name} className="grid grid-cols-[1fr_auto] gap-4 px-5 py-4">
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-slate-950">{program.name}</p>
                     <p className="mt-1 text-sm text-slate-500">{program.category}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 text-right">
                     <p className="font-semibold text-slate-950">{program.value}</p>
                     <p className="mt-1 text-xs font-semibold text-emerald-700">{program.status}</p>
                   </div>

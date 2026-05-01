@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react"
+import Link from "next/link"
+import { useEffect, useState, useRef, useCallback, useMemo, useSyncExternalStore } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Navbar } from "@/components/navbar"
 import {
@@ -45,33 +46,73 @@ type DashboardSnapshot = {
   savedIds: Set<string>
 }
 
-function readDashboardSnapshot(): DashboardSnapshot {
+const EMPTY_PROFILE_ERROR =
+  "No profile data is saved in this browser yet. Complete onboarding or load a demo profile to open the decision ledger."
+
+const DEMO_PROFILE = {
+  gpa: 3.42,
+  credits: 31,
+  income: 38000,
+  major: "Computer Information Systems",
+  skills: ["Python", "Data Analysis", "Public Speaking", "Excel"],
+  citizenship: "US Citizen",
+  enrollment: "Full-Time",
+  borough: "Queens",
+  is_first_gen: true,
+  has_dependents: false,
+}
+
+function readDashboardStorageSnapshot(): string {
+  if (typeof window === "undefined") return ""
+
+  return JSON.stringify({
+    profile: window.localStorage.getItem("bridge_profile"),
+    matches: window.localStorage.getItem("bridge_matches"),
+    saved: window.localStorage.getItem("bridge_saved"),
+  })
+}
+
+function subscribeDashboardStorage(callback: () => void) {
+  if (typeof window === "undefined") return () => {}
+  window.addEventListener("storage", callback)
+  window.addEventListener("bridge-dashboard-storage", callback)
+  return () => {
+    window.removeEventListener("storage", callback)
+    window.removeEventListener("bridge-dashboard-storage", callback)
+  }
+}
+
+function parseDashboardSnapshot(storageSnapshot: string): DashboardSnapshot {
   const fallback = {
     data: null,
-    error: "No profile found. Please complete onboarding first.",
+    error: EMPTY_PROFILE_ERROR,
     profile: {},
     savedIds: new Set<string>(),
   }
 
-  if (typeof window === "undefined") return fallback
+  if (!storageSnapshot) return fallback
 
-  const savedProfile = window.localStorage.getItem("bridge_profile")
-  const savedMatches = window.localStorage.getItem("bridge_matches")
-  const savedResources = window.localStorage.getItem("bridge_saved")
+  let stored: { profile?: string | null; matches?: string | null; saved?: string | null }
+  try {
+    stored = JSON.parse(storageSnapshot)
+  } catch {
+    return fallback
+  }
 
-  if (!savedProfile || !savedMatches) return fallback
+  if (!stored.profile || !stored.matches) return fallback
 
   try {
+    const saved = stored.saved ? JSON.parse(stored.saved) : []
     return {
-      data: JSON.parse(savedMatches) as MatchData,
+      data: JSON.parse(stored.matches) as MatchData,
       error: null,
-      profile: JSON.parse(savedProfile),
-      savedIds: savedResources ? new Set(JSON.parse(savedResources)) : new Set<string>(),
+      profile: JSON.parse(stored.profile),
+      savedIds: Array.isArray(saved) ? new Set(saved) : new Set<string>(),
     }
   } catch {
     return {
       data: null,
-      error: "Failed to load your profile data.",
+      error: "Saved profile data could not be loaded. Start onboarding again or load the demo profile to refresh the ledger.",
       profile: {},
       savedIds: new Set<string>(),
     }
@@ -447,14 +488,18 @@ function StatCard({ label, value, accent, delay = 0 }: {
 
 // -- DASHBOARD PAGE -----------------------------------------------------------
 export default function DashboardPage() {
-  const [initialState]              = useState<DashboardSnapshot>(readDashboardSnapshot)
-  const [data]                      = useState<MatchData | null>(initialState.data)
-  const [error]                     = useState<string | null>(initialState.error)
+  const storageSnapshot = useSyncExternalStore(
+    subscribeDashboardStorage,
+    readDashboardStorageSnapshot,
+    () => "",
+  )
+  const snapshot = useMemo(() => parseDashboardSnapshot(storageSnapshot), [storageSnapshot])
+  const { data, error, profile, savedIds } = snapshot
   const [activeTab, setActiveTab]   = useState("All")
-  const [savedIds, setSavedIds]     = useState<Set<string>>(initialState.savedIds)
   const [curateTarget, setCurateTarget] = useState<Resource | null>(null)
-  const [profile]                   = useState<Record<string, unknown>>(initialState.profile)
   const [scoreAnimated, setScoreAnimated] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
+  const [demoError, setDemoError] = useState<string | null>(null)
   const [now]                       = useState(() => Date.now())
 
   useEffect(() => {
@@ -463,32 +508,75 @@ export default function DashboardPage() {
     return () => clearTimeout(timer)
   }, [data])
 
+  const seedDemoProfile = async () => {
+    setDemoLoading(true)
+    setDemoError(null)
+
+    try {
+      const matchRes = await fetch(`${API}/match/ledger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(DEMO_PROFILE),
+      })
+
+      if (!matchRes.ok) throw new Error(await matchRes.text())
+      const matchData = await matchRes.json()
+
+      localStorage.setItem("bridge_profile", JSON.stringify(DEMO_PROFILE))
+      localStorage.setItem("bridge_matches", JSON.stringify(matchData))
+      localStorage.removeItem("bridge_saved")
+      window.dispatchEvent(new Event("bridge-dashboard-storage"))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error"
+      setDemoError(`Could not reach the decision engine: ${message}`)
+    } finally {
+      setDemoLoading(false)
+    }
+  }
+
   const toggleSave = (id: string) => {
-    setSavedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      localStorage.setItem("bridge_saved", JSON.stringify([...next]))
-      return next
-    })
+    const next = new Set(savedIds)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    localStorage.setItem("bridge_saved", JSON.stringify([...next]))
+    window.dispatchEvent(new Event("bridge-dashboard-storage"))
   }
 
   if (error) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#F0F9FF" }}>
-      <div style={{ maxWidth: 440 }}>
-        <div style={{ width: 56, height: 56, background: "#FEE2E2", borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-          <AlertTriangle size={24} color="#DC2626" />
+    <main className="min-h-screen bg-[#f6f8fb] text-slate-950">
+      <Navbar />
+      <section className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-6 py-24 text-center">
+        <div className="w-full rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-md bg-amber-50 ring-1 ring-amber-200">
+            <AlertTriangle size={24} color="#D97706" />
+          </div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-blue-700">
+            Decision ledger
+          </p>
+          <h1 className="text-2xl font-semibold text-slate-950">
+            {error === EMPTY_PROFILE_ERROR ? "No Profile Loaded" : "Profile Needs Refresh"}
+          </h1>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">{error}</p>
+          {demoError && (
+            <p className="mx-auto mt-4 max-w-xl rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {demoError}
+            </p>
+          )}
+          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href="/onboard" className="btn-primary">
+              <RotateCcw size={15} /> Start Onboarding
+            </Link>
+            <button onClick={seedDemoProfile} disabled={demoLoading} className="btn-outline justify-center disabled:cursor-not-allowed disabled:opacity-60">
+              <Sparkles size={15} className={demoLoading ? "animate-spin" : ""} />
+              {demoLoading ? "Loading Demo" : "Load Demo Profile"}
+            </button>
+          </div>
         </div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", marginBottom: 10 }}>No Profile Found</h1>
-        <p style={{ fontSize: 14, color: "#64748B", marginBottom: 28 }}>{error}</p>
-        <button onClick={() => { window.location.href = "/onboard" }} className="btn-primary" style={{ display: "inline-flex" }}>
-          <RotateCcw size={15} /> Start Onboarding
-        </button>
-      </div>
-    </div>
+      </section>
+    </main>
   )
 
   const isLoading = !data && !error
