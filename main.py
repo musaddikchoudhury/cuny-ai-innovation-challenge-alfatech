@@ -46,12 +46,28 @@ app.add_middleware(
 
 MODEL   = "claude-haiku-4-5-20251001"
 PUBLIC_APP_URL = primary_frontend_url()
+ANTHROPIC_KEY_ENV = "ANTHROPIC_API_KEY"
+
+
+class MissingAIConfigurationError(RuntimeError):
+    """Raised when an endpoint needs Claude but Railway is missing the API key."""
+
+
+def ai_configuration_error(feature: str) -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail=(
+            f"{feature} is temporarily unavailable because the BridgeAI AI service "
+            f"is not configured. Add {ANTHROPIC_KEY_ENV} in Railway Variables, "
+            "redeploy the service, and try again."
+        ),
+    )
 
 
 def anthropic_client() -> anthropic.Anthropic:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = os.getenv(ANTHROPIC_KEY_ENV)
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not configured.")
+        raise MissingAIConfigurationError(f"{ANTHROPIC_KEY_ENV} is not configured.")
     return anthropic.Anthropic(api_key=api_key)
 
 
@@ -195,6 +211,8 @@ Return only JSON:
         data["is_first_gen"]   = data.get("is_first_gen")   or False
         data["has_dependents"] = data.get("has_dependents") or False
         return StudentProfile(**data)
+    except MissingAIConfigurationError:
+        raise ai_configuration_error("AI profile extraction")
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="AI returned malformed JSON. Please try again.")
     except Exception as e:
@@ -304,6 +322,8 @@ def landing_bot_chat(req: LandingChatRequest):
     try:
         reply = ai_with_system(LANDING_BOT_SYSTEM, claude_messages, max_tokens=512)
         return {"reply": reply}
+    except MissingAIConfigurationError:
+        raise ai_configuration_error("BridgeBot")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"BridgeBot error: {str(e)}")
 
@@ -339,6 +359,8 @@ Always end with one actionable next step."""
     try:
         reply = ai_with_system(system_prompt, claude_messages, max_tokens=512)
         return {"reply": reply}
+    except MissingAIConfigurationError:
+        raise ai_configuration_error("BridgeBot")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"BridgeBot error: {str(e)}")
 
@@ -386,6 +408,8 @@ Return valid JSON only (no markdown):
         text  = ai(prompt, max_tokens=1024)
         clean = text.strip().strip("```json").strip("```").strip()
         return json.loads(clean)
+    except MissingAIConfigurationError:
+        raise ai_configuration_error("Resume tailoring")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Resume tailoring failed: {str(e)}")
 
@@ -406,4 +430,5 @@ async def schedule_gmail_reminder(req: GmailReminderRequest, background_tasks: B
 def health_check():
     return {"status": "online", "version": "3.4.0",
             "resources_loaded": len(get_resources()), "ai_model": MODEL,
-            "ai_configured": bool(os.getenv("ANTHROPIC_API_KEY"))}
+            "ai_configured": bool(os.getenv(ANTHROPIC_KEY_ENV)),
+            "ai_key_env": ANTHROPIC_KEY_ENV}

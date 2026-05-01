@@ -8,6 +8,17 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"
 
 interface Msg { role: "user" | "assistant"; content: string }
 
+async function readApiError(res: Response) {
+  try {
+    const body = await res.clone().json()
+    if (typeof body.detail === "string") return body.detail
+  } catch {
+    // Fall through to the plain-text response body.
+  }
+
+  return await res.text()
+}
+
 // Parse markdown bold (**text**) and links ([text](url)) into JSX
 function FormattedMessage({ text }: { text: string }) {
   const renderInline = (line: string): ReactNode[] => {
@@ -121,12 +132,16 @@ export function LandingBridgeBot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: [...messages, userMsg] }),
       })
+      if (!res.ok) throw new Error(await readApiError(res))
       const data = await res.json()
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }])
-    } catch {
+    } catch (err: unknown) {
+      const fallback =
+        "I couldn't connect right now. Try [uploading your documents](/onboard) to get your full resource match."
+      const content = err instanceof Error && err.message ? err.message : fallback
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "I couldn't connect right now. Try [uploading your documents](/onboard) to get your full resource match.",
+        content,
       }])
     } finally {
       setThinking(false)

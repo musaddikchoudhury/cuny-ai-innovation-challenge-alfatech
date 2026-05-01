@@ -39,6 +39,17 @@ const CATEGORY_META: Record<string, { color: string; bg: string; icon: React.Ele
   "Internship":    { color: "#065f46", bg: "#D1FAE5", icon: Briefcase },
 }
 
+async function readApiError(res: Response) {
+  try {
+    const body = await res.clone().json()
+    if (typeof body.detail === "string") return body.detail
+  } catch {
+    // Fall through to the plain-text response body.
+  }
+
+  return await res.text()
+}
+
 type DashboardSnapshot = {
   data: MatchData | null
   error: string | null
@@ -322,10 +333,13 @@ function BridgeBot({ profile }: { profile: Record<string, unknown> }) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile, messages: [...messages, userMsg] }),
       })
+      if (!res.ok) throw new Error(await readApiError(res))
       const data = await res.json()
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }])
-    } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I could not connect right now." }])
+    } catch (err: unknown) {
+      const fallback = "Sorry, I could not connect right now."
+      const content = err instanceof Error && err.message ? err.message : fallback
+      setMessages(prev => [...prev, { role: "assistant", content }])
     } finally { setThinking(false) }
   }, [messages, profile])
 
@@ -519,7 +533,7 @@ export default function DashboardPage() {
         body: JSON.stringify(DEMO_PROFILE),
       })
 
-      if (!matchRes.ok) throw new Error(await matchRes.text())
+      if (!matchRes.ok) throw new Error(await readApiError(matchRes))
       const matchData = await matchRes.json()
 
       localStorage.setItem("bridge_profile", JSON.stringify(DEMO_PROFILE))

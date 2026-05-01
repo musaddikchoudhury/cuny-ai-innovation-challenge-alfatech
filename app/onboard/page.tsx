@@ -23,6 +23,17 @@ const PROCESSING_STEPS = [
   "Generating your Access Score…",
 ]
 
+async function readApiError(res: Response) {
+  try {
+    const body = await res.clone().json()
+    if (typeof body.detail === "string") return body.detail
+  } catch {
+    // Fall through to the plain-text response body.
+  }
+
+  return await res.text()
+}
+
 // ── INNER COMPONENT (needs useSearchParams) ───────────────────────────────────
 
 function OnboardInner() {
@@ -90,7 +101,7 @@ function OnboardInner() {
         body: formData,
       })
 
-      if (!extractRes.ok) throw new Error(await extractRes.text())
+      if (!extractRes.ok) throw new Error(await readApiError(extractRes))
       const profile = await extractRes.json()
 
       const matchRes = await fetch(`${API}/match/ledger`, {
@@ -99,7 +110,7 @@ function OnboardInner() {
         body: JSON.stringify(profile),
       })
 
-      if (!matchRes.ok) throw new Error(await matchRes.text())
+      if (!matchRes.ok) throw new Error(await readApiError(matchRes))
       const matchData = await matchRes.json()
 
       localStorage.setItem("bridge_profile", JSON.stringify(profile))
@@ -139,7 +150,7 @@ function OnboardInner() {
         body: JSON.stringify(mockProfile),
       })
 
-      if (!matchRes.ok) throw new Error(await matchRes.text())
+      if (!matchRes.ok) throw new Error(await readApiError(matchRes))
       const matchData = await matchRes.json()
 
       localStorage.setItem("bridge_profile", JSON.stringify(mockProfile))
@@ -181,7 +192,7 @@ function OnboardInner() {
         body: JSON.stringify(profile),
       })
 
-      if (!matchRes.ok) throw new Error(await matchRes.text())
+      if (!matchRes.ok) throw new Error(await readApiError(matchRes))
       const matchData = await matchRes.json()
 
       localStorage.setItem("bridge_profile", JSON.stringify(profile))
