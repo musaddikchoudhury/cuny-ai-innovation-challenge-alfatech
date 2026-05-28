@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev:api",
+      "type": "shell",
+      "command": "python3",
+      "args": [
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--reload",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
+      "isBackground": true,
+      "group": "build"
+    },
+    {
+      "label": "dev:web",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "group": "build"
+    },
+    {
+      "label": "dev:all",
+      "dependsOn": ["dev:api", "dev:web"],
+      "dependsOrder": "parallel",
+      "group": "build"
+    }
+  ]
+}
