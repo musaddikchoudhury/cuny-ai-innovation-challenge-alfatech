@@ -1,42 +1,79 @@
 # BridgeAI
-### Powered by Urban-Sync: The Civic Ledger
+
+### Explainable Civic Resource Intelligence for CUNY Students
 
 [![Software Track](https://img.shields.io/badge/Track-Software-blue)](#)
 [![Public Interest Tech](https://img.shields.io/badge/Category-Public%20Interest%20Tech-green)](#)
 [![CUNY Innovation](https://img.shields.io/badge/Challenge-CUNY%20AI%20Innovation-orange)](#)
 [![AI Assisted](https://img.shields.io/badge/AI-Claude%20by%20Anthropic-blueviolet)](#)
-[![CI](https://github.com/your/repo/actions/workflows/ci.yml/badge.svg)](#)
+[![CI](https://github.com/musaddikchoudhury/cuny-ai-innovation-challenge-alfatech/actions/workflows/ci.yml/badge.svg)](https://github.com/musaddikchoudhury/cuny-ai-innovation-challenge-alfatech/actions/workflows/ci.yml)
 
-> AI suggests. The civic decision engine verifies. Students get clear next steps.
+> AI suggests. The civic decision engine verifies.
 
-BridgeAI is a civic-tech platform built for the CUNY AI Innovation Challenge. It helps CUNY students discover scholarships, public benefits, food support, internships, and campus resources through a practical mix of AI extraction, rule-based eligibility logic, and explainable ranking.
+BridgeAI helps CUNY students discover scholarships, public benefits, food support, internships, and campus resources through a hybrid AI + deterministic rules architecture. AI handles extraction and explanation; auditable rules handle eligibility, ranking constraints, deadlines, and trust-critical decisions.
 
-## Problem
+The goal is simple: reduce the paperwork burden for students without turning civic eligibility into a black box.
 
-New York City students often miss support they qualify for because eligibility rules are scattered across PDFs, portals, campus pages, and agency websites. BridgeAI reduces that paperwork burden by turning a student profile into a ranked civic resource ledger.
+---
 
-## Core Features
+## Executive Summary
 
-- Onboarding via document upload, LinkedIn-style profile input, or quick form
-- Civic Decision Engine for scholarships, benefits, internships, and campus support
-- Explainable match reasons, estimated values, fit scores, and deadlines
+New York City students often miss support they qualify for because program requirements are scattered across PDFs, campus pages, agency portals, and job boards. BridgeAI turns a student profile into a ranked civic resource ledger with clear next steps, deadlines, estimated value, and plain-language match reasons.
+
+BridgeAI is designed as a public-interest AI system rather than a generic chatbot:
+
+- **AI-assisted intake** extracts structured profile data from documents, resumes, and form input.
+- **Rule-based eligibility** verifies scholarship, benefit, internship, and campus resource matches.
+- **Explainable ranking** shows why each opportunity appears and what makes it urgent or valuable.
+- **Privacy-aware deployment** keeps API keys server-side and processes uploads in memory.
+- **Reviewer-friendly demo mode** keeps the experience usable even when live AI services are unavailable.
+
+---
+
+## System Highlights
+
+| Area | Implementation |
+| --- | --- |
+| Frontend | Next.js App Router, React, TypeScript, Tailwind CSS, Framer Motion |
+| Backend | FastAPI, Pydantic, pdfplumber, Anthropic Claude API |
+| Decision layer | Deterministic eligibility rules over `resources.json` |
+| AI layer | Structured extraction, profile parsing, explanation generation |
+| Data sources | Curated civic resources plus NYC Open Data jobs integration |
+| Deployment | Vercel frontend, Railway/Render FastAPI backend, Docker Compose support |
+| Integration safety | TypeScript API contracts and typed fetch helpers in `lib/types.ts` and `lib/api.ts` |
+
+---
+
+## Features
+
+- Multi-path onboarding through PDF upload, resume upload, LinkedIn-style profile entry, or quick form
+- Civic Decision Engine for scholarships, public benefits, internships, food support, and campus resources
+- Ranked opportunity ledger with fit scores, estimated values, match reasons, and deadlines
 - Deadline tracker with reminder and Google Calendar actions
-- BridgeBot resource advisor for general and profile-aware guidance
+- BridgeBot advisor for both general and profile-aware civic resource guidance
 - Resume curation support for internship matches
-- Demo profile mode for reviewers when backend services are unavailable
+- Demo profile mode for reviewers and offline presentation flows
+- Typed frontend API helpers for safer client/backend integration
 
-- Frontend now includes TypeScript API contracts and typed fetch helpers in `lib/types.ts` and `lib/api.ts` to improve integration safety
+---
 
-## Tech Stack
+## Architecture
 
-- Frontend: Next.js App Router, React, TypeScript, Tailwind CSS, Framer Motion
-- Backend: FastAPI, Pydantic, pdfplumber, Anthropic Claude API
-- Data: `resources.json` plus NYC Open Data jobs integration
-- Deployment targets: Vercel for frontend, Railway or Render for FastAPI
+BridgeAI separates suggestion from verification. The AI layer converts messy inputs into structured data and helps generate explanations. The decision engine applies auditable rules from the resource ledger before any recommendation is presented to the student.
 
-## Architecture Diagrams
+### Repository Map
 
-### README Version
+```text
+app/                  Next.js routes and global styles
+components/           Shared UI components and BridgeBot widget
+lib/                  Frontend API contracts and typed fetch helpers
+main.py               FastAPI backend and civic decision engine
+resources.json        Curated resource eligibility dataset
+docs/                 Technical audit and supporting documentation
+public/               Static assets
+```
+
+### High-Level System
 
 ```mermaid
 flowchart LR
@@ -67,13 +104,32 @@ PDF versions:
 - [Onboarding and Matching Flow PDF](docs/bridgeai-onboarding-matching-sequence.pdf)
 - [Presentation Architecture PDF](docs/bridgeai-presentation-architecture.pdf)
 
-### AI Workflow Diagram
+### Why This Architecture
 
-This diagram emphasizes the hybrid AI + deterministic rules architecture:
-- **Blue layer** (🤖 AI Data Extraction): Claude API structures student profiles from documents
-- **Green layer** (⚙️ Decision Engine): Rule-based eligibility filtering and matching
-- **Yellow layer** (📊 Ranking): Fit scores, urgency, and explainability scoring
-- **Results**: Ranked opportunities with match reasons and deadlines
+- **Fairness:** Eligibility is based on explicit, inspectable thresholds rather than writing style or demographic proxies.
+- **Reliability:** Claude does not decide whether a student qualifies; deterministic rules remain the source of truth.
+- **Trust:** Students see concrete reasons such as GPA, income range, enrollment status, major alignment, and deadline urgency.
+- **Maintainability:** Program updates can be made in `resources.json` without retraining a model.
+- **Cost control:** AI is reserved for high-leverage extraction and explanation tasks rather than every rule evaluation.
+
+### System Architecture Deep Dive
+
+BridgeAI follows a hybrid AI + deterministic rules pattern:
+
+- **AI Layer:** Claude API handles document extraction, profile structuring, and explanation generation. API keys remain server-side.
+- **Rules Layer:** FastAPI enforces deterministic eligibility logic with clear thresholds such as GPA, credits, income, citizenship, enrollment, major, and skills.
+- **Ranking Layer:** Fit scores combine rule satisfaction, urgency, estimated value, and alignment signals.
+- **Data Layer:** `resources.json` is the source of truth for 60+ civic programs. NYC Open Data provides live internship opportunities.
+
+Public-interest tech has a higher explainability bar than consumer recommendation systems. BridgeAI keeps the model useful while keeping the decision path auditable.
+
+---
+
+## AI Decision Pipeline
+
+The pipeline moves from student-provided data to validated profile fields, then to verified eligibility and ranked recommendations.
+
+### Workflow Diagram
 
 ```mermaid
 flowchart TD
@@ -190,32 +246,117 @@ flowchart TD
   class RESULTS,DASHBOARD,EXPLANATIONS,DEADLINES,ACTIONS,REMINDS results;
 ```
 
-### Cloud Deployment Diagram
+### Intake
 
-This diagram shows the complete infrastructure architecture across cloud providers:
+Students can provide data through:
 
-**Layers:**
-- **🌐 Browser**: User client running the Next.js app
-- **☁️ Vercel Cloud**: Frontend deployment with public environment variable for API URL
-- **☁️ Railway/Render Cloud**: Backend deployment with FastAPI, decision engine, PDF processing
-- **☁️ External APIs**: Anthropic Claude (AI extraction) and NYC Open Data (jobs)
-- **💾 Local Data**: resources.json and campus metadata
+- **PDF upload:** transcripts, FAFSA forms, financial aid letters, and benefit documents
+- **Resume upload:** skills, work history, projects, and internship signals
+- **Manual form:** GPA, credits, income, major, borough, enrollment status, first-generation status, and dependents
+- **LinkedIn-style profile:** structured education and experience input
 
-**Security highlights:**
-- `ANTHROPIC_API_KEY` stays server-side only (never sent to browser)
-- PDFs processed temporarily in memory, not persisted
-- `NEXT_PUBLIC_API_URL` is intentionally public (frontend must call API)
-- CORS headers validate requests from Vercel domain
-- All external API calls happen server-side
+### Extraction and Validation
 
-**Data flow (numbered 1–10):**
-1. User navigates to frontend
-2. Browser requests Next.js app from Vercel
-3. Frontend makes HTTPS API calls via `NEXT_PUBLIC_API_URL`
-4. Backend returns CORS-validated JSON responses
-5–7. PDF or form data → FastAPI → Claude API → structured extraction
-8–9. Backend queries NYC Open Data for internship opportunities
-10. Ranked resources returned to frontend
+Claude receives unstructured text and returns a structured `StudentProfile` payload:
+
+```json
+{
+  "gpa": 3.4,
+  "credits_completed": 75,
+  "annual_income": 22000,
+  "major": "Computer Science",
+  "citizenship": "US Citizen",
+  "enrollment": "full-time",
+  "borough": "Manhattan",
+  "is_first_gen": true,
+  "has_dependents": false,
+  "skills": ["Python", "React", "SQL"]
+}
+```
+
+Pydantic validates the schema before the profile reaches the decision engine.
+
+### Eligibility
+
+For each resource in `resources.json`, the engine:
+
+1. Applies min/max thresholds for GPA, credits, income, citizenship, enrollment, and related fields.
+2. Categorizes results into scholarships, benefits, internships, food support, and campus resources.
+3. Prioritizes deadlines and marks rolling, upcoming, or urgent opportunities.
+
+Example rule shape:
+
+```python
+# Scholarships require GPA >= 2.0 and US citizenship
+if student.gpa >= 2.0 and student.citizenship == "US Citizen":
+    eligible_for_scholarships.append(resource)
+
+# SNAP benefits require annual income < $19k
+if student.annual_income < 19000:
+    eligible_for_benefits.append(resource)
+```
+
+### Ranking and Explainability
+
+Eligible resources are returned with fit scores, estimated value, deadlines, and explanations:
+
+```json
+{
+  "resource_id": "nyc-scholarship-2024",
+  "name": "NYC Excellence Scholarship",
+  "fit_score": 87,
+  "match_reason": "Your full-time enrollment, 3.4 GPA, and first-generation status make you a strong candidate.",
+  "estimated_value": 5000,
+  "deadline": "2024-06-30"
+}
+```
+
+Fit score calculation:
+
+- Base 50 points for resources that pass eligibility checks
+- +20 for deadline urgency within 30 days
+- +15 for major or program alignment
+- +5 for relevant skills or profile signals
+
+---
+
+## Explainability and Trust
+
+BridgeAI treats explanations as part of the product surface, not an afterthought. Students should understand both what they qualify for and why.
+
+Core trust mechanisms:
+
+- **Clear rules:** Decisions come from inspectable thresholds such as income, GPA, credits, and enrollment.
+- **Plain-language reasons:** Every result includes a short match explanation.
+- **Deadline transparency:** Results distinguish urgent, upcoming, and rolling opportunities.
+- **Auditable data:** `resources.json` is human-readable and can be reviewed by maintainers.
+- **No success-proxy scoring:** The system avoids opaque predictions like "likelihood to succeed."
+
+Example score breakdown:
+
+```text
+Scholarship Fit Score: 87 / 100
+
+Eligibility: base 50 points
+- GPA 3.4 >= 2.0
+- US Citizen
+- Full-time enrollment
+
+Alignment: +20 points
+- First-generation student signal
+- Deadline within 30 days
+
+Skills match: +10 points
+- Computer Science major aligns with program focus
+```
+
+---
+
+## Deployment
+
+BridgeAI is designed for a split deployment model: the frontend is hosted on Vercel, and the FastAPI backend runs on a Python host such as Railway or Render.
+
+### Cloud Deployment Architecture
 
 ```mermaid
 graph TB
@@ -312,92 +453,18 @@ graph TB
     class ENV_FE,ENV_BE env;
 ```
 
-## Project Structure
+### Deployment Notes
 
-```text
-app/                  Next.js routes and global styles
-components/           Shared UI components and BridgeBot widget
-lib/                  Frontend helpers
-main.py               FastAPI civic decision engine
-resources.json        Curated resource eligibility dataset
-docs/                 Technical audit and supporting documentation
-public/               Static assets
-```
+- Deploy the FastAPI backend first on Railway, Render, or another Python host.
+- Confirm `/health` is online before connecting the frontend.
+- Set `NEXT_PUBLIC_API_URL` in Vercel to the deployed backend URL.
+- Set `FRONTEND_URL` on the backend host to the deployed Vercel domain for CORS.
+- Use the repo root as the Vercel project root. Vercel should auto-detect Next.js and run `npm run build`.
+- No `vercel.json` is required for the current frontend setup.
 
-## Local Development
+### Docker
 
-Install frontend dependencies:
-
-```bash
-npm install
-```
-
-Run the Next.js app:
-
-```bash
-npm run dev
-```
-
-Create a Python environment and install backend dependencies:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Run the FastAPI backend:
-
-```bash
-python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Open `http://localhost:3000` and set `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000` if the frontend is not using the default backend URL.
-
-In VS Code, the workspace tasks now expose:
-
-- `dev:api` for the FastAPI server
-- `dev:web` for the Next.js app
-- `dev:all` to start both in parallel
-
-## Environment Variables
-
-Frontend:
-
-```bash
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
-```
-
-Backend:
-
-```bash
-ANTHROPIC_API_KEY=your_anthropic_api_key
-FRONTEND_URL=http://localhost:3000
-```
-
-For production, set `FRONTEND_URL` to the deployed Vercel URL. Multiple origins can be comma-separated.
-
-## Verification
-
-```bash
-npm run lint
-npm run build
-python3 -m py_compile main.py
-curl http://127.0.0.1:8000/health
-```
-
-## Vercel Deployment
-
-1. Deploy the FastAPI backend first on Railway, Render, or another Python host.
-2. Confirm the backend health endpoint returns online: `/health`.
-3. In Vercel, set `NEXT_PUBLIC_API_URL` to the backend URL.
-4. In the backend host, set `FRONTEND_URL` to the Vercel domain.
-5. Run `npm run build` locally before pushing.
-6. Deploy from the repository root using the Vercel Next.js preset.
-
-## Docker Deployment
-
-The repository now includes a two-service Docker setup:
+The repository includes a two-service Docker setup:
 
 - `Dockerfile.api` builds the FastAPI backend.
 - `Dockerfile.web` builds the Next.js frontend.
@@ -409,144 +476,69 @@ Run the full stack locally:
 docker compose up --build
 ```
 
-This exposes the frontend on `http://localhost:3000` and the backend on `http://localhost:8000`.
-Set `ANTHROPIC_API_KEY` in your shell before starting Compose if you want the AI-powered endpoints to be live.
+This exposes:
 
-## Security Notes
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
 
-- Do not commit `.env` files or API keys.
-- `ANTHROPIC_API_KEY` is used only by the backend.
-- `NEXT_PUBLIC_API_URL` is intentionally public because browser code must call the API.
-- Uploaded PDFs are read in memory and are not permanently stored by the current backend.
+Set `ANTHROPIC_API_KEY` in your shell before starting Compose if you want AI-powered endpoints to be live.
 
-## Hackathon Context
+---
 
-BridgeAI was built under collaborative hackathon constraints. The current codebase preserves the original public-interest mission while adding stronger production readiness, accessibility, and reviewer-friendly documentation.
-## System Architecture Deep Dive
+## Security and Privacy
 
-BridgeAI follows a **hybrid AI + deterministic rules** pattern:
+BridgeAI handles sensitive student profile fields, including GPA, income, citizenship, and enrollment status. The current implementation is intentionally lightweight, but the privacy model is explicit.
 
-- **AI Layer**: Claude API handles only extraction and explanation tasks (PDF parsing, profile structuring, ranking rationale generation). Requests include API keys server-side only.
-- **Rules Layer**: FastAPI backend enforces deterministic eligibility logic with clear thresholds (GPA ≥ 2.0, citizenship status, income limits). Decisions are transparent and auditable.
-- **Ranking Layer**: Fit scores (50–100) combine rule satisfaction, urgency, and estimated value. Match reasons explain *why* a resource appears in results.
-- **Data Layer**: resources.json acts as the source of truth for 60+ civic programs. NYC Open Data API provides live internship opportunities.
+### Data Handling
 
-**Why this matters**: Public-interest tech must be explainable. By separating AI suggestions from rule-verified decisions, we ensure students understand both what they qualify for and why.
+| Data Type | Storage | Retention | Notes |
+| --- | --- | --- | --- |
+| Uploaded PDFs | In memory only | Not persisted | Deleted after extraction |
+| Student profiles | Browser `localStorage` | Until logout/clear | `bridge_profile` key |
+| Match results | Browser `localStorage` | Until logout/clear | `bridge_matches` key |
+| Saved resources | Browser `localStorage` | Persistent | User can delete manually |
+| API logs | Backend logs | Operational only | Should not include raw PII |
+| Anthropic API calls | Anthropic systems | Per provider policy | Used for extraction/explanation |
 
-## AI Decision Pipeline
+### API Key and Network Boundaries
 
-### Intake (User → Student Profile)
+- `ANTHROPIC_API_KEY` is stored only on the backend host.
+- `NEXT_PUBLIC_API_URL` is intentionally public because browser code must know where to send API requests.
+- PDF parsing and Claude calls happen server-side.
+- CORS should restrict production requests to the deployed frontend origin.
+- HTTPS should be used for all production traffic.
+- `.env` and secret files should never be committed.
 
-Students provide data via:
-- **PDF Upload**: pdfplumber extracts text from transcripts, FAFSA forms, award letters
-- **Resume Upload**: pdfplumber extracts skills and work history
-- **Manual Form**: Direct input of GPA, credits, income, major, borough, enrollment status, first-generation flag, dependents
-- **LinkedIn-style Profile**: Structured data entry mimicking professional networks
+### PII Handling
 
-### Extraction (Data → JSON)
+- Student profile data is validated server-side before matching.
+- No PII is sent to NYC Open Data when querying internship listings.
+- Anthropic calls are used only for extraction and explanation tasks.
+- Students can clear local profile and match data from the browser.
 
-Claude API receives unstructured text and generates a `StudentProfile` JSON:
+### Compliance Notes
 
-```json
-{
-  "gpa": 3.4,
-  "credits_completed": 75,
-  "annual_income": 22000,
-  "major": "Computer Science",
-  "citizenship": "US Citizen",
-  "enrollment": "full-time",
-  "borough": "Manhattan",
-  "is_first_gen": true,
-  "has_dependents": false,
-  "skills": ["Python", "React", "SQL"]
-}
-```
+- **FERPA:** Assumes student profile data is student-provided, not pulled from institutional systems.
+- **GDPR:** A future account-based version should include export and deletion workflows.
+- **CCPA:** A future persistent profile system should provide data access and deletion endpoints.
 
-Pydantic validates schema before passing to decision engine.
+---
 
-### Decision (JSON → Eligibility)
+## API Reference
 
-For each of 60+ resources in `resources.json`, the engine:
-1. **Filters**: Apply min/max thresholds (GPA, credits, income, citizenship)
-2. **Categorizes**: Scholarships, benefits, internships, campus resources
-3. **Prioritizes**: Set deadlines (rolling vs. fixed), urgency score
+The backend exposes REST endpoints through FastAPI. The live OpenAPI schema is available at `/docs` when the API server is running.
 
-Example logic:
-```python
-# Scholarships require GPA >= 2.0 and US citizenship
-if student.gpa >= 2.0 and student.citizenship == "US Citizen":
-    eligible_for_scholarships.append(resource)
+### `POST /extract-profile`
 
-# SNAP benefits require annual income < $19k
-if student.annual_income < 19000:
-    eligible_for_benefits.append(resource)
-```
+Extract a structured student profile from an uploaded document.
 
-### Ranking (Eligibility → Match Explanations)
-
-Claude generates fit scores and one-sentence explanations:
-
-```json
-{
-  "resource_id": "nyc-scholarship-2024",
-  "name": "NYC Excellence Scholarship",
-  "fit_score": 87,
-  "match_reason": "Your full-time enrollment, 3.4 GPA, and first-generation status make you a strong candidate.",
-  "estimated_value": 5000,
-  "deadline": "2024-06-30"
-}
-```
-
-**Fit Score Calculation:**
-- Base: 50 (all eligible resources start here)
-- +20 if deadline is within 30 days (urgency bonus)
-- +15 if major aligns with resource focus
-- +5 if student has relevant skills
-
-## Engineering Decisions
-
-### Why Next.js App Router + React?
-
-- **SSR for SEO**: Landing page ranks for civic-tech keywords
-- **API Routes**: Could extend with backend endpoints if needed
-- **Vercel Integration**: Zero-config deployment, automatic HTTPS, edge functions for future caching
-- **DX**: TypeScript prevents prop and data-shape errors; Tailwind ensures responsive design on mobile (critical for students on phones)
-
-### Why FastAPI for Backend?
-
-- **Speed**: Async I/O for concurrent PDF processing and API calls
-- **Type Safety**: Pydantic models auto-validate student profiles and resource metadata
-- **Simplicity**: Single `main.py` file keeps hackathon scope manageable; easy to split into microservices later
-- **OpenAPI Docs**: Auto-generated `/docs` endpoint helps reviewers understand the API
-
-### Why Claude Haiku?
-
-- **Cost**: Haiku is 5–10× cheaper than GPT-4, critical for scaling to thousands of students
-- **Speed**: Sub-second latency for structured extraction
-- **Accuracy**: Reliable for form parsing and explanation generation
-- **JSON Mode**: Native support for returning structured data without regex parsing
-
-### Why Hybrid AI + Rules?
-
-- **Fairness**: Rules are auditable and don't discriminate based on writing style or profile demographics
-- **Reliability**: Claude doesn't hallucinate eligibility decisions; rules are source of truth
-- **Trust**: Students see *why* they qualify: explicit rules, not opaque scores
-- **Maintainability**: Update eligibility rules by editing `resources.json`; no model retraining needed
-
-## API Documentation
-
-### Core Endpoints
-
-#### `POST /extract-profile`
-Extract structured student profile from uploaded document.
-
-**Request:**
 ```bash
 curl -X POST http://localhost:8000/extract-profile \
   -F "file=@transcript.pdf"
 ```
 
-**Response:**
+Response:
+
 ```json
 {
   "gpa": 3.4,
@@ -561,10 +553,12 @@ curl -X POST http://localhost:8000/extract-profile \
 }
 ```
 
-#### `POST /match/ledger`
-Match student profile against all resources and return ranked opportunities.
+### `POST /match/ledger`
 
-**Request:**
+Match a validated student profile against the civic resource ledger.
+
+Request:
+
 ```json
 {
   "gpa": 3.4,
@@ -579,7 +573,8 @@ Match student profile against all resources and return ranked opportunities.
 }
 ```
 
-**Response:**
+Response:
+
 ```json
 {
   "matched_resources": [
@@ -599,258 +594,238 @@ Match student profile against all resources and return ranked opportunities.
 }
 ```
 
-#### `POST /chat/landing-bot`
-Public chatbot (no profile context). Answers general civic-tech questions.
+### Additional Endpoints
 
-#### `POST /chat/bridge-bot`
-Profile-aware advisor. Includes student context (GPA, major, etc.) in conversation.
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /chat/landing-bot` | Public chatbot for general civic-tech questions without profile context |
+| `POST /chat/bridge-bot` | Profile-aware resource advisor using student context |
+| `GET /nyc-jobs` | Query live internship opportunities from NYC Open Data |
+| `POST /tailor-resume` | Generate resume suggestions for a specific internship opportunity |
+| `GET /health` | Service health check for local development and deployment pipelines |
 
-#### `GET /nyc-jobs`
-Query live internship opportunities from NYC Open Data.
+### Rate Limits and Quotas
 
-#### `POST /tailor-resume`
-Generate resume suggestions for specific internship opportunities.
+- `POST /extract-profile`: 5 requests per minute per IP
+- Claude API calls: batch and cache where possible to manage cost
+- NYC Open Data jobs: 10 requests per minute
 
-#### `GET /health`
-Service health check (used by deployment pipelines).
+---
 
-### Rate Limiting & Quotas
+## Local Development
 
-- **Extract-profile**: 5 requests per minute per IP (PDF parsing is expensive)
-- **Claude API calls**: Batched and cached where possible to minimize cost
-- **NYC Jobs API**: 10 requests per minute (public API limit)
+### Quick Start
 
-## Explainability & Trust
+Install frontend dependencies:
 
-### Why Students Should Trust BridgeAI
-
-1. **Clear Rules**: Every decision comes from hardcoded thresholds, not black-box ML.
-   - "You qualify for SNAP because income < $19k" ✓
-   - "You matched this scholarship because GPA ≥ 2.0 AND first-gen status" ✓
-
-2. **Match Explanations**: Every result includes a one-sentence reason.
-   - Example: "Your 75 completed credits and Computer Science major align with internship requirements."
-
-3. **Deadline Transparency**: Students see exact dates and urgency indicators.
-   - Urgent (< 7 days) · Upcoming (7–30 days) · Rolling (ongoing)
-
-4. **Open Data Sources**: resources.json is human-readable and auditable.
-   - Reviewers can verify thresholds
-   - Maintainers can update programs without code changes
-
-5. **No Algorithmic Bias**: Rules don't encode demographic bias.
-   - Decisions based on verifiable credentials (GPA, income, enrollment status)
-   - No "likelihood to succeed" proxy scores
-
-### Fit Score Breakdown
-
-Students can see how their match score was calculated:
-
+```bash
+npm install
 ```
-Scholarship Fit Score: 87 / 100
 
-✓ Eligibility (base 50 points)
-  - GPA 3.4 ≥ 2.0 ✓
-  - US Citizen ✓
-  - Full-time enrollment ✓
+Create a Python environment and install backend dependencies:
 
-+ Alignment (20 points)
-  - First-generation student (+5)
-  - Deadline within 30 days (+15)
-
-+ Skills match (10 points)
-  - Major: Computer Science aligns
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
+
+Start the FastAPI backend:
+
+```bash
+python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Start the Next.js frontend:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+### Environment Variables
+
+Frontend:
+
+```bash
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+Backend:
+
+```bash
+ANTHROPIC_API_KEY=your_anthropic_api_key
+FRONTEND_URL=http://localhost:3000
+```
+
+For production, set `FRONTEND_URL` to the deployed Vercel URL. Multiple origins can be comma-separated.
+
+### VS Code Tasks
+
+The workspace includes tasks for common development flows:
+
+- `dev:api` starts the FastAPI server.
+- `dev:web` starts the Next.js app.
+- `dev:all` starts both in parallel.
+
+### Verification
+
+```bash
+npm run lint
+npm run build
+python3 -m py_compile main.py
+curl http://127.0.0.1:8000/health
+```
+
+---
+
+## Engineering Decisions
+
+### Why Next.js App Router and React?
+
+- Strong support for server-rendered and static routes.
+- Smooth Vercel deployment path with automatic HTTPS.
+- TypeScript improves safety around profile, resource, and API response contracts.
+- Tailwind supports responsive UI patterns for students using mobile devices.
+
+### Why FastAPI?
+
+- Async I/O works well for PDF processing, external APIs, and AI provider calls.
+- Pydantic models validate student profiles and resource metadata.
+- The generated OpenAPI docs make the backend easier to inspect.
+- The current single-file backend is hackathon-friendly while still allowing later service extraction.
+
+### Why Claude Haiku?
+
+- Lower cost and latency for structured extraction workloads.
+- Reliable enough for profile parsing and short explanation generation.
+- JSON-oriented outputs reduce brittle post-processing.
+
+### Why Hybrid AI + Rules?
+
+- Civic eligibility decisions should be explainable and auditable.
+- Rules can be reviewed, tested, and updated without model retraining.
+- AI is useful for messy input extraction, but not trusted as the final eligibility authority.
+
+---
 
 ## Accessibility
 
-### Design & Usability
+BridgeAI is built for students who may be using phones, assistive technology, or low-friction demo access.
 
-- **WCAG 2.1 AA Compliance**: Tailwind CSS ensures sufficient color contrast, keyboard navigation works
-- **Mobile-First**: Most CUNY students use phones; app is fully responsive
-- **Plain Language**: Error messages and instructions avoid jargon
-- **Screen Reader Support**: Next.js semantic HTML + ARIA labels for dashboard tables and charts
+- Responsive UI for mobile-first usage.
+- Semantic HTML and ARIA-aware components for dashboard and table surfaces.
+- Plain-language errors and explanations.
+- Multiple input methods for different comfort levels and document availability.
+- Demo mode without login for reviewers and first-time users.
+- Planned multilingual support for Spanish, Mandarin, Korean, and other NYC language communities.
 
-### Accessibility in Civic Tech
-
-- **Multiple Input Methods**: PDF, resume, form, LinkedIn-style input accommodate different preferences
-- **No Login Requirement for Demo**: Reviewers and students can explore without friction
-- **Deadline Reminders**: Email and Google Calendar options for students who prefer async notifications
-- **Text-Only Fallback**: If Claude API is unavailable, app shows demo profile with sample matches
-
-### Future Accessibility Roadmap
-
-- Spanish/Mandarin translations for NYC's multilingual population
-- Audio descriptions for scholarship videos
-- Simplified view for students unfamiliar with financial terminology
-- Screen reader optimization for complex tables
-
-## Security & Privacy
-
-### Data Handling
-
-| Data Type | Storage | Retention | Notes |
-|-----------|---------|-----------|-------|
-| Uploaded PDFs | In-memory only | Not persisted | Deleted after extraction |
-| Student profiles | Browser localStorage | Until logout | `bridge_profile` key |
-| Match results | Browser localStorage | Until logout | `bridge_matches` key |
-| Saved resources | Browser localStorage | Persistent | User can delete manually |
-| API logs | Backend logs | 7 days | For debugging only |
-| Anthropic API calls | Anthropic's systems | Per their policy | Never includes full PDFs |
-
-### API Key Security
-
-- **ANTHROPIC_API_KEY**: Environment variable on backend only, never in frontend code or `.env.local`
-- **NEXT_PUBLIC_API_URL**: Intentionally public; frontend must know backend URL
-- **CORS**: Restricted to Vercel domain in production
-- **HTTPS Only**: All API calls encrypted in transit
-
-### PII Handling
-
-- Student profiles contain sensitive info (GPA, income, citizenship)
-- Profiles are validated server-side; form data is sent over HTTPS POST
-- No PII is logged or sent to third parties except:
-  - Anthropic Claude API (for extraction/explanation)
-  - NYC Open Data API (for internship queries; no PII sent)
-- Students can clear their profile with one click
-
-### Compliance Notes
-
-- **FERPA**: Assumes student profile data is student-provided, not from institutional sources
-- **GDPR** (if EU users access): Implement right-to-deletion for localStorage profiles
-- **CCPA** (California students): Provide data export via API endpoint (future)
+---
 
 ## Known Limitations
 
-### Current Version (Hackathon Submission)
+| Limitation | Current Workaround | Planned Direction |
+| --- | --- | --- |
+| CUNY-first scope | Focus on NYC/CUNY resource rules | Generalize rule engine for other institutions |
+| Manual resource curation | Update `resources.json` by hand | Admin workflow or structured sync from trusted sources |
+| No OCR for scanned PDFs | Use manual form input | Add Tesseract, Azure Vision, or multimodal extraction |
+| No persistent accounts | Browser `localStorage` demo mode | Add Supabase/Auth0 and PostgreSQL |
+| Rough value estimates | Use program value ranges | Partner with financial aid and benefits experts |
+| Self-reported profile data | Trust student-provided fields | Add optional verification integrations later |
 
-1. **Single Institution Focus**: Designed for CUNY; would need adaptation for other universities
-2. **NYC-Specific Resources**: NYC Open Data jobs + NYC benefit thresholds; not generalizable nationally
-3. **Manual Resource Curation**: resources.json requires hand-updating when programs change
-4. **No Real Authentication**: Demo mode only; no persistent student accounts
-5. **PDF Parsing Limitations**:
-   - Scanned images (OCR) not supported yet; requires text-based PDFs
-   - Complex layouts (e.g., multiple columns) may confuse pdfplumber
-6. **Budget Estimation**: "Estimated value" is rough; does not reflect full financial aid package
-7. **No Verification**: System trusts student-reported data (GPA, income, etc.); no official verification
+---
 
-### Workarounds & Planned Fixes
+## Roadmap
 
-| Limitation | Workaround | Planned Fix | Timeline |
-|-----------|-----------|-----------|----------|
-| No OCR | Manual form input | Integrate Tesseract or Azure Vision | Post-hackathon |
-| Manual curation | Update `resources.json` by hand | Scrape program websites; sync via webhooks | Q3 2024 |
-| No accounts | localStorage only | Implement Supabase auth + PostgreSQL | Post-hackathon |
-| Rough budget estimates | Use program min/max ranges | Partner with CUNY financial aid office | Q2 2024 |
+### Phase 1: MVP Refinement
 
-## Future Roadmap
-
-### Phase 1: MVP Refinement (Immediate)
-
-- [ ] Add OCR for scanned PDFs (OpenAI Vision or local Tesseract)
+- [ ] Add OCR for scanned PDFs
 - [ ] Expand resource database to 100+ programs
-- [ ] Deploy to production URLs (Vercel + Railway)
-- [ ] Write end-to-end tests for decision engine
-- [ ] Add CUNY-specific metadata (campus locations, office hours)
+- [ ] Deploy production frontend and backend URLs
+- [ ] Add end-to-end tests for decision engine flows
+- [ ] Add richer CUNY campus metadata, office hours, and resource locations
 
-### Phase 2: Multi-Tenant (Q2–Q3 2024)
+### Phase 2: Multi-Institution Support
 
-- [ ] Support other CUNY campuses (Hunter, City College, QCC, etc.)
-- [ ] Generalize rule engine for non-CUNY institutions
-- [ ] Build admin dashboard for resource curation
-- [ ] Add authentication (Supabase or Auth0)
-- [ ] Persistent student profiles with account history
+- [ ] Support additional CUNY campuses and program variants
+- [ ] Generalize rule definitions for non-CUNY institutions
+- [ ] Build admin tooling for resource curation
+- [ ] Add authentication and persistent student profiles
+- [ ] Track saved resources and application history across sessions
 
-### Phase 3: Intelligence Layer (Q3–Q4 2024)
+### Phase 3: Evaluation and Intelligence Layer
 
-- [ ] Continuous eval: Track which resources students actually apply to
-- [ ] Prompt optimization: Improve Claude extraction accuracy over time
-- [ ] Outcome tracking: Did students get the scholarship? Close the loop.
-- [ ] Predictive recommendations: "Students like you often apply to X"
+- [ ] Track which recommendations students save or apply to
+- [ ] Improve extraction prompts through evaluation sets
+- [ ] Add outcome tracking for scholarships, benefits, and internships
+- [ ] Introduce recommendation quality metrics without replacing rule verification
 
-### Phase 4: Scale & Impact (2025+)
+### Phase 4: Scale and Impact
 
-- [ ] Expand to national civic resources (FAFSA, federal internships)
-- [ ] Mobile app (React Native or Flutter)
-- [ ] Multilingual support (Spanish, Mandarin, Korean)
-- [ ] Integration with institutional financial aid systems
-- [ ] Analytics dashboard for CUNY's equity team
+- [ ] Expand to national civic resources and federal programs
+- [ ] Add React Native or Flutter mobile app
+- [ ] Add multilingual support
+- [ ] Integrate with institutional financial aid systems where permitted
+- [ ] Build analytics dashboards for equity and access teams
 
-## Contributor Guidelines
+---
+
+## Contributing
+
+BridgeAI is a civic-tech codebase, so contributions should preserve transparency, explainability, and student privacy.
 
 ### Getting Started
 
-1. **Fork** the repository
-2. **Clone** and set up local dev environment:
-   ```bash
-   git clone https://github.com/your-username/bridgeai.git
-   cd bridgeai
-   npm install && pip install -r requirements.txt
-   ```
-3. **Create a branch** for your feature:
-   ```bash
-   git checkout -b feat/your-feature-name
-   ```
+1. Fork and clone the repository.
+2. Follow the [Local Development](#local-development) setup.
+3. Create a focused feature branch with a conventional name such as `feat/resource-admin` or `fix/pdf-extraction`.
 
-### Code Style & Standards
+### Code Standards
 
-- **Frontend**: ESLint + Prettier (run `npm run lint --fix`)
-- **Backend**: Black formatter + type hints (run `black main.py`)
-- **Commit Messages**: Use conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`)
-- **Tests**: Add tests for any new decision engine rules
+- Frontend: ESLint and Prettier through `npm run lint`
+- Backend: Black formatting and type hints
+- Commits: conventional commit prefixes such as `feat:`, `fix:`, `docs:`, and `refactor:`
+- Tests: add focused coverage for decision engine rule changes and API contract changes
 
-### Adding a New Civic Resource
+### Adding a Civic Resource
 
-1. **Edit** `resources.json`:
-   ```json
-   {
-     "id": "resource-name",
-     "name": "Program Name",
-     "category": "Scholarship | Benefit | Internship | Campus",
-     "description": "One-line description",
-     "eligibility": {
-       "min_gpa": 2.0,
-       "min_credits": 0,
-       "max_income": 50000,
-       "citizenship_required": false
-     },
-     "value": 5000,
-     "deadline": "2024-06-30",
-     "link": "https://...",
-     "contact": "contact@program.org"
-   }
-   ```
+Add an entry to `resources.json`, then test it against both eligible and ineligible profiles:
 
-2. **Test** the rule in `main.py`:
-   ```python
-   test_profile = StudentProfile(
-       gpa=3.0, credits_completed=60, annual_income=20000, ...
-   )
-   matches = match_ledger(test_profile)
-   assert any(r.id == "resource-name" for r in matches.matched_resources)
-   ```
+```json
+{
+  "id": "resource-name",
+  "name": "Program Name",
+  "category": "Scholarship | Benefit | Internship | Campus",
+  "description": "One-line description",
+  "eligibility": {
+    "min_gpa": 2.0,
+    "min_credits": 0,
+    "max_income": 50000,
+    "citizenship_required": false
+  },
+  "value": 5000,
+  "deadline": "2024-06-30",
+  "link": "https://...",
+  "contact": "contact@program.org"
+}
+```
 
-3. **Submit PR** with a description of the resource and why it's relevant to CUNY students
+### Modifying Decision Rules
 
-### Modifying Decision Engine Rules
-
-- **Rule changes are breaking changes**: Update version in comments
-- **Document thresholds**: Why is min_gpa 2.0? Add a comment referencing the program's official requirements
-- **Get community feedback**: Open an issue before major logic changes
-- **Add tests**: Ensure rule changes don't break existing matches
+- Treat rule changes as behavior changes.
+- Document threshold sources and keep the rule explainable to non-engineers.
+- Add tests showing both matching and non-matching profiles.
 
 ### Reporting Issues
 
-When filing a bug:
-- **Title**: Be specific ("PDFs with scanned images fail" vs. "PDF parsing broken")
-- **Reproduction Steps**: Include a sample PDF or student profile that triggers the bug
-- **Expected vs. Actual**: "Expected 5 scholarships, got 3"
-- **Environment**: Python version, backend host (Railway/Render/local), any custom configs
+- Use a specific title.
+- Include reproduction steps and expected vs. actual behavior.
+- Add an example student profile or document type when relevant.
+- Include local/deployed environment details.
 
-### Community & Support
+---
 
-- **Questions?** Open a GitHub Discussion
-- **Want to contribute but unsure where?** Look for `good-first-issue` labels
-- **Public interest tech?** Join our Slack (link in repo)
-- **Academic research?** License terms allow educational use; cite this repo
+## Project Context
 
+BridgeAI began as a CUNY AI Innovation Challenge project and has been refactored toward a production-aware open-source civic-tech platform. The current codebase preserves the original public-interest mission while improving integration safety, documentation quality, deployment clarity, accessibility, and reviewer experience.
